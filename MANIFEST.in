@@ -1,0 +1,5 @@
+recursive-include assets *.patch *.diff *.txt
+include *.py
+include *.rst
+include MANIFEST.in
+include LICENSE

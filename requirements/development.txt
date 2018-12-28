@@ -1,0 +1,3 @@
+-r install.txt
+-r tasks.txt
+-r test.txt
