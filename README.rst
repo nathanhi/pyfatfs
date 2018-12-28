@@ -22,9 +22,9 @@ To install fs.fat just run from the root of the project:
 
 
 Usage
------
+=====
 Opener
-''''''
+------
 
 Use fs.open_fs to open a filesystem with a FAT `FS URL <https://pyfilesystem2.readthedocs.io/en/latest/openers.html>`_:
 
@@ -33,7 +33,31 @@ Use fs.open_fs to open a filesystem with a FAT `FS URL <https://pyfilesystem2.re
     import fs
     my_fs = fs.open_fs("fat:///dev/sda1")
 
-The following URL parameter is supported: encoding (defaults to ibm437).
+The following URL parameters are supported: encoding and offset
+
+Parameters
+''''''''''
+
+encoding
+^^^^^^^^
+
+fs.fat offers an encoding parameter to allow overriding the default encoding
+of ibm437 for file names, which was mainly used by DOS and still is a
+fallback of Linux.
+
+Later versions of Windows were using Windows-1252, also known as CP1252, as
+encoding. Any encoding known by Python can be used as value for this parameter.
+
+offset
+^^^^^^
+
+Specify an offset in bytes to skip when accessing the file. That way even
+complete disk images can be read if the location of the partition is known:
+
+.. code-block:: python
+
+    import fs
+    my_fs = fs.open_fs("fat:///dev/sda?offset=32256")
 
 
 Testing

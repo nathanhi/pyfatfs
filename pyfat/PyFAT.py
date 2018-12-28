@@ -6,7 +6,7 @@ import warnings
 
 from contextlib import contextmanager
 from os import PathLike, SEEK_END
-from io import BufferedReader
+from io import BufferedReader, open
 
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
 from pyfat._exceptions import PyFATException, NotAnLFNEntryException
@@ -102,7 +102,9 @@ class PyFAT:
     #: FAT32 bit mask for volume error bit
     FAT32_DRIVE_ERROR_BIT_MASK = 0x0400000
 
-    def __init__(self, force_fat32: bool = False, encoding: str = 'ibm437'):
+    def __init__(self,
+                 encoding: str = 'ibm437',
+                 offset: int = 0):
         """PyFAT main class.
         :param force_fat32: Force FAT32 compatibility
         :param encoding: Define encoding to use for filenames
@@ -110,6 +112,7 @@ class PyFAT:
         :type encoding: str
         """
         self.__fp = None
+        self.__fp_offset = offset
         self.bpb_header = None
         self.fat_header = None
         self.root_dir = None
@@ -119,20 +122,21 @@ class PyFAT:
         self.first_data_sector = 0
         self.fat_type = self.FAT_TYPE_UNKNOWN
         self.fat = {}
-        self.force_fat32 = force_fat32
         self.initialised = False
         self.fat_clusterchains = {}
         self.encoding = encoding
-
-        if self.force_fat32 is True:
-            warnings.warn("FAT32 compatibility forced, this is completely "
-                          "untested and may not work at all!", Warning)
 
     def __set_fp(self, fp):
         if isinstance(self.__fp, BufferedReader):
             raise PyFATException("Cannot overwrite existing file handle, "
                                  "create new class instance of PyFAT.")
         self.__fp = fp
+
+    def __seek(self, address: int):
+        """Seek to given address with offset."""
+        if self.__fp is None:
+            raise PyFATException("Cannot seek without a file handle!")
+        self.__fp.seek(address + self.__fp_offset)
 
     def open(self, filename):
         try:
@@ -171,15 +175,14 @@ class PyFAT:
 
     @_init_check
     def parse_fat(self):
-        # Seek to first FAT entry
-        self.__fp.seek(self.bpb_header["BPB_RsvdSecCnt"] *
-                       self.bpb_header["BPB_BytsPerSec"])
-
         # Read all FATs
-        fat_size = self.bpb_header[
-                       "BPB_BytsPerSec"] * self._get_fat_size_count()
+        fat_size = self.bpb_header["BPB_BytsPerSec"] * self._get_fat_size_count()
+
+        # Seek FAT entries
+        first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"] * self.bpb_header["BPB_BytsPerSec"]
         fats = []
-        for _ in range(self.bpb_header["BPB_NumFATS"]):
+        for i in range(self.bpb_header["BPB_NumFATS"]):
+            self.__seek(first_fat_bytes + (i * fat_size))
             fats += [self.__fp.read(fat_size)]
 
         if len(fats) < 1:
@@ -300,7 +303,7 @@ class PyFAT:
 
         # Parse until given entry is not an LFN entry anymore
         while True:
-            self.__fp.seek(address)
+            self.__seek(address)
             lfn_dir_data = self.__fp.read(
                 FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
             lfn_dir_hdr = struct.unpack(
@@ -318,7 +321,7 @@ class PyFAT:
         return address, lfn_entry
 
     def parse_dir_entries(self, address: int = 0):
-        self.__fp.seek(address)
+        self.__seek(address)
         dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
         dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT, dir_data)
         dir_hdr = dict(zip(FATDirectoryEntry.FAT_DIRECTORY_VARS, dir_hdr))
@@ -330,7 +333,7 @@ class PyFAT:
             address, lfn_entry = self.parse_lfn_entries(address)
 
             # Re-read following directory entry
-            self.__fp.seek(address)
+            self.__seek(address)
             dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
             dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT, dir_data)
             dir_hdr = dict(zip(FATDirectoryEntry.FAT_DIRECTORY_VARS, dir_hdr))
@@ -369,7 +372,7 @@ class PyFAT:
             fullsize = 144
             fsz = 0
             for i in self.get_cluster_chain(cluster):
-                self.__fp.seek(i)
+                self.__seek(i)
                 sz = self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"]
                 if fsz + sz > fullsize:
                     sz = fullsize - fsz
@@ -437,27 +440,21 @@ class PyFAT:
 
     def __parse_fat12_header(self):
         """Parses a FAT12/16 header"""
-        orig_pos = self.__fp.tell()
-        self.__fp.seek(0)
+        self.__seek(0)
         boot_sector = self.__fp.read(512)
         header = struct.unpack(self.fat12_header_layout,
                                boot_sector[36:][:26])
         self.fat_header = dict(zip(self.fat12_header_vars, header))
-        self.__fp.seek(orig_pos)
 
     def __parse_fat32_header(self):
-        orig_pos = self.__fp.tell()
-        self.__fp.seek(0)
+        self.__seek(0)
         boot_sector = self.__fp.read(512)
         header = struct.unpack(self.fat32_header_layout,
                                boot_sector[36:][:54])
         self.fat_header = dict(zip(self.fat32_header_vars, header))
-        self.__fp.seek(orig_pos)
 
     def parse_header(self):
-        self.__fp.seek(0, SEEK_END)
-        self.__fp.seek(0)
-
+        self.__seek(0)
         boot_sector = self.__fp.read(512)
 
         header = struct.unpack(self.bpb_header_layout, boot_sector[:36])
@@ -486,12 +483,10 @@ class PyFAT:
             # TODO: Verify that BPB_FATSz16 is 0
             self.__parse_fat32_header()
 
-            if self.force_fat32 is False:
-                raise PyFATException("FAT32 currently not supported, please "
-                                     "come back again later!")
+            # TODO: Verify FAT32 header
 
         # Check signature
-        self.__fp.seek(510)
+        self.__seek(510)
         signature = struct.unpack("<H", self.__fp.read(2))[0]
 
         if signature != 0xAA55:
