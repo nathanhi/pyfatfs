@@ -178,6 +178,11 @@ class FATDirectoryEntry:
         else:
             return sep.join([name, ext])
 
+    def _remove_padding(self, entry: bytes):
+        while entry.endswith(b'\xFF\xFF'):
+            entry = entry[:-2]
+        return entry
+
     def get_long_name(self):
         if self.lfn_entry is None:
             raise NotAnLFNEntryException("No LFN entry found for this "
@@ -186,9 +191,8 @@ class FATDirectoryEntry:
         name = ""
         for i in sorted(self.lfn_entry.lfn_entries.keys()):
             # TODO: Verify checksum!
-            name += self.lfn_entry.lfn_entries[i]["LDIR_Name1"].decode(self.__encoding).strip()
-            name += self.lfn_entry.lfn_entries[i]["LDIR_Name2"].decode(self.__encoding).strip()
-            name += self.lfn_entry.lfn_entries[i]["LDIR_Name3"].decode(self.__encoding).strip()
+            for h in ["LDIR_Name1", "LDIR_Name2", "LDIR_Name3"]:
+                name += self._remove_padding(self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding).strip()
 
         return name.strip()
 
