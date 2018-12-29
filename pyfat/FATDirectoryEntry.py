@@ -208,10 +208,18 @@ class FATLongDirectoryEntry:
     def __init__(self):
         self.lfn_entries = {}
 
+    @staticmethod
+    def is_lfn_entry(LDIR_Ord, LDIR_Attr):
+        lfn_attr = FATDirectoryEntry.ATTR_LONG_NAME
+        lfn_attr_mask = FATDirectoryEntry.ATTR_LONG_NAME_MASK
+        is_attr_set = (LDIR_Attr & lfn_attr_mask) == lfn_attr
+
+        return is_attr_set and LDIR_Ord != 0xE5
+
     def add_lfn_entry(self, LDIR_Ord, LDIR_Name1, LDIR_Attr, LDIR_Type,
                       LDIR_Chksum, LDIR_Name2, LDIR_FstClusLO, LDIR_Name3):
         # Check if attribute matches
-        if LDIR_Attr != FATDirectoryEntry.ATTR_LONG_NAME:
+        if not self.is_lfn_entry(LDIR_Ord, LDIR_Attr):
             raise NotAnLFNEntryException("Given LFN entry is not a long "
                                          "file name entry or attribute "
                                          "not set correctly!")
@@ -222,10 +230,10 @@ class FATLongDirectoryEntry:
                                  "cluster ID, don't know what to do.")
 
         # Check if item with same index has already been added
-        #if LDIR_Ord in self.lfn_entries.keys():
-        #    raise PyFATException("Given LFN entry part with index \'{}\'"
-        #                         "has already been added to LFN "
-        #                         "entry list.".format(LDIR_Ord))
+        if LDIR_Ord in self.lfn_entries.keys():
+            raise PyFATException("Given LFN entry part with index \'{}\'"
+                                 "has already been added to LFN "
+                                 "entry list.".format(LDIR_Ord))
 
         # TODO: Verify checksum
 
