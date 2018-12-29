@@ -26,7 +26,7 @@ def _init_check(func):
     return _wrapper
 
 
-class PyFAT:
+class PyFat:
     #: Used as fat_type if unable to detect FAT type
     FAT_TYPE_UNKNOWN = 0
     #: Used as fat_type if FAT12 fs has been detected
@@ -107,10 +107,10 @@ class PyFAT:
                  encoding: str = 'ibm437',
                  offset: int = 0):
         """PyFAT main class.
-        :param force_fat32: Force FAT32 compatibility
         :param encoding: Define encoding to use for filenames
-        :type force_fat32: bool
+        :param offset: Offset of the FAT partition in the given file
         :type encoding: str
+        :type offset: int
         """
         self.__fp = None
         self.__fp_offset = offset
@@ -275,7 +275,7 @@ class PyFAT:
             # Parse all directory entries in chain
             max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
             for dir_entry in self.__parse_dir_entries_in_range(root_dir_byte, max_bytes):
-              root_dir_entry.add_subdirectory(dir_entry)
+                root_dir_entry.add_subdirectory(dir_entry)
         return root_dir_entry
 
     def parse_root_dir(self):
@@ -433,7 +433,10 @@ class PyFAT:
         else:
             total_sectors = self.bpb_header["BPB_TotSec32"]
 
-        data_sec = total_sectors - (self.bpb_header["BPB_RsvdSecCnt"] + (self.bpb_header["BPB_NumFATS"] * self._get_fat_size_count()) + self.root_dir_sectors)
+        rsvd_sectors = self.bpb_header["BPB_RsvdSecCnt"]
+        fat_sz = self.bpb_header["BPB_NumFATS"] * self._get_fat_size_count()
+        root_dir_sectors = self.root_dir_sectors
+        data_sec = total_sectors - (rsvd_sectors + fat_sz + root_dir_sectors)
         count_of_clusters = data_sec // self.bpb_header["BPB_SecPerClus"]
 
         if count_of_clusters < 4085:
@@ -577,24 +580,28 @@ class PyFAT:
     @contextmanager
     def open_fs(filename: PathLike, offset: int = 0,
                 encoding="ibm437"):
-        pf = PyFAT(encoding=encoding, offset=offset)
+        pf = PyFat(encoding=encoding, offset=offset)
         pf.open(filename)
         yield pf
         pf.close()
 
 
 if __name__ == '__main__':
-    foo = {"efifs32": "/dev/sda1",
-           #"dosfs16": "/tmp/fat16_dosfs.img",
-           #"msdos622": "/tmp/hda1.img",
-           #"dosfs16 + vfat": "/tmp/vfat16_dosfs.img",
-           #"dosfs12": "/tmp/fat12_dosfs.img"
+    foo = {#"efifs32": ("/dev/sda1", 0, "ibm437"),
+           #"win98fs": ("/tmp/win98.img", 32256, "cp1252"),
+           #"winMEfs": ("/tmp/winme.img", 32256, "cp1252"),
+           #"dosfs16": ("/tmp/fat16_dosfs.img", 0, "ibm437"),
+           #"msdos622": ("/tmp/hda1.img", 0, "ibm437"),
+           "dosfs16 + vfat": ("/tmp/vfat16_dosfs.img", 0, "ibm437"),
+           #"dosfs12": ("/tmp/fat12_dosfs.img", 0, "ibm437")
            }
 
     for f in foo:
         print(f)
         print('='*len(f))
-        with PyFAT.open_fs(foo[f], force_fat32=True) as fs:
+        with PyFat.open_fs(foo[f][0],
+                           offset=foo[f][1],
+                           encoding=foo[f][2]) as fs:
             for root, dirs, files in fs.root_dir.walk():
                 print("root: {}".format(root))
                 print("dirs: {}".format(dirs))

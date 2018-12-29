@@ -1,12 +1,12 @@
-fs.fat
-======
+fs.fatfs
+========
 
 .. automodule:: pyfat
    :members:
    :inherited-members:
    :show-inheritance:
 
-.. autoclass:: pyfat.PyFAT.PyFAT
+.. autoclass:: pyfat.PyFat
    :members:
    :inherited-members:
    :show-inheritance:
