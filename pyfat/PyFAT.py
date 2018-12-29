@@ -4,7 +4,7 @@
 import struct
 
 from contextlib import contextmanager
-from os import PathLike, SEEK_END
+from os import PathLike
 from io import BufferedReader, open
 
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
@@ -207,7 +207,7 @@ class PyFAT:
         self.fat = [0x0]*(total_entries+1)
 
         curr = 0
-        cluster = 0  # Start at an offset, first two entries are header
+        cluster = 0
         while curr < total_entries:
             incr = -(-self.fat_type // 8)
             offset = int(curr + incr)
@@ -239,7 +239,7 @@ class PyFAT:
         FAT12/16 has a fixed location of root directory entries
         and is therefore size limited (BPB_RootEntCnt).
         """
-        root_dir_entry_byte = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
+        root_dir_byte = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
         root_dir_entry = FATDirectoryEntry("/",
                                            FATDirectoryEntry.ATTR_DIRECTORY,
                                            "0", "0", "0", "0", "0", "0", "0",
@@ -247,17 +247,12 @@ class PyFAT:
                                            self.bpb_header["BPB_SecPerClus"],
                                            "0", encoding=self.encoding)
 
-        new_addr = root_dir_entry_byte
-        for i in range(self.bpb_header["BPB_RootEntCnt"]):
-            # Directory headers are 32 bytes long
-            dir_addr = root_dir_entry_byte + (
-                        i * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
-            if dir_addr <= new_addr:
-                # Already parsed, probably an LFN entry inbetween
-                continue
-            new_addr, dir_entry = self.parse_dir_entries(address=dir_addr)
-            if dir_entry is not None:
-                root_dir_entry.add_subdirectory(dir_entry)
+        max_bytes = self.bpb_header["BPB_RootEntCnt"] * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+
+        # Parse all directory entries in root directory
+        for dir_entry in self.__parse_dir_entries_in_range(root_dir_byte,
+                                                           max_bytes):
+            root_dir_entry.add_subdirectory(dir_entry)
 
         return root_dir_entry
 
@@ -273,22 +268,12 @@ class PyFAT:
                                            self.fat_header["BPB_RootClus"],
                                            "0", encoding=self.encoding)
 
+        # Follow root directory cluster chain
         for root_dir_byte in self.get_cluster_chain(root_dir_entry_cluster):
-            max_entries = self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"]
-            new_addr = root_dir_byte
-            for i in range(root_dir_byte, root_dir_byte + max_entries,
-                           FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE):
-                if new_addr > i+FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE:
-                    # We might have skipped some bytes due to LFN entries
-                    continue
-                if new_addr > root_dir_byte+max_entries:
-                    break
-
-                new_addr, dir_entry = self.parse_dir_entries(new_addr)
-                new_addr += FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
-
-                if dir_entry is not None:
-                    root_dir_entry.add_subdirectory(dir_entry)
+            # Parse all directory entries in chain
+            max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
+            for dir_entry in self.__parse_dir_entries_in_range(root_dir_byte, max_bytes):
+              root_dir_entry.add_subdirectory(dir_entry)
         return root_dir_entry
 
     def parse_root_dir(self):
@@ -299,12 +284,12 @@ class PyFAT:
 
     def parse_lfn_entries(self, address: int = None):
         lfn_entry = FATLongDirectoryEntry()
+        dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         # Parse until given entry is not an LFN entry anymore
         while True:
             self.__seek(address)
-            lfn_dir_data = self.__fp.read(
-                FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
+            lfn_dir_data = self.__fp.read(dir_hdr_sz)
             lfn_dir_hdr = struct.unpack(
                 FATLongDirectoryEntry.FAT_LONG_DIRECTORY_LAYOUT, lfn_dir_data)
             lfn_dir_hdr = dict(
@@ -315,27 +300,52 @@ class PyFAT:
                 lfn_entry.add_lfn_entry(**lfn_dir_hdr)
             except NotAnLFNEntryException:
                 break
-            address += FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+
+            address += dir_hdr_sz
 
         return address, lfn_entry
 
-    def parse_dir_entries(self, address: int = 0):
+    def __parse_dir_entry(self, address):
         self.__seek(address)
         dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
-        dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT, dir_data)
+        dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT,
+                                dir_data)
         dir_hdr = dict(zip(FATDirectoryEntry.FAT_DIRECTORY_VARS, dir_hdr))
+        return dir_hdr
 
+    def __parse_dir_entries_in_range(self, address, max_bytes):
+        dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+        if max_bytes % dir_hdr_sz != 0:
+            raise PyFATException("Cannot parse directory entries "
+                                 "in the next \'{}\' bytes, must divide "
+                                 "without remainder.".format(max_bytes))
+
+        dir_entries = []
+        max_address = address + (max_bytes - dir_hdr_sz)
+        for i in range(address, max_address, dir_hdr_sz):
+            if address > i:
+                # We might have skipped a few entries due to LFN entries
+                continue
+            if address > max_address:
+                break
+
+            address, dir_entry = self.parse_dir_entries(address)
+            address += dir_hdr_sz
+            dir_entries += [dir_entry]
+
+        return list(filter(None.__ne__, dir_entries))
+
+    def parse_dir_entries(self, address: int = 0):
         lfn_entry = None
+        dir_hdr = self.__parse_dir_entry(address)
 
-        if dir_hdr["DIR_Attr"] == FATDirectoryEntry.ATTR_LONG_NAME:
+        if FATLongDirectoryEntry.is_lfn_entry(dir_hdr["DIR_Name"],
+                                              dir_hdr["DIR_Attr"]):
             # Parse LFN entries and continue at given address
             address, lfn_entry = self.parse_lfn_entries(address)
 
             # Re-read following directory entry
-            self.__seek(address)
-            dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
-            dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT, dir_data)
-            dir_hdr = dict(zip(FATDirectoryEntry.FAT_DIRECTORY_VARS, dir_hdr))
+            dir_hdr = self.__parse_dir_entry(address)
 
         if dir_hdr["DIR_Name"][0] == 0x0 or dir_hdr["DIR_Name"][0] == 0xE5:
             # Empty directory entry
@@ -347,21 +357,11 @@ class PyFAT:
         if dir_entry.is_directory() and not dir_entry.is_special():
             # Iterate all subdirectories except for dot and dotdot
             for dir_byte in self.get_cluster_chain(dir_hdr["DIR_FstClusLO"]):
-                max_entries = self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"]
-                new_addr = dir_byte
-                for i in range(dir_byte, dir_byte + max_entries,
-                               FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE):
-                    if new_addr >= i:
-                        # We might have skipped some bytes due to LFN entries
-                        continue
-                    if new_addr >= dir_byte+max_entries:
-                        break
-
-                    new_addr, d = self.parse_dir_entries(address=new_addr)
-                    new_addr += FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
-
-                    if d is not None:
-                        dir_entry.add_subdirectory(d)
+                max_bytes = self.bpb_header["BPB_SecPerClus"] * \
+                            self.bpb_header["BPB_BytsPerSec"]
+                for de in self.__parse_dir_entries_in_range(dir_byte,
+                                                            max_bytes):
+                    dir_entry.add_subdirectory(de)
 
         return address, dir_entry
 
@@ -423,9 +423,7 @@ class PyFAT:
         else:
             total_sectors = self.bpb_header["BPB_TotSec32"]
 
-        data_sec = total_sectors - (self.bpb_header["BPB_RsvdSecCnt"] + (
-                    self.bpb_header[
-                        "BPB_NumFATS"] * self._get_fat_size_count()) + self.root_dir_sectors)
+        data_sec = total_sectors - (self.bpb_header["BPB_RsvdSecCnt"] + (self.bpb_header["BPB_NumFATS"] * self._get_fat_size_count()) + self.root_dir_sectors)
         count_of_clusters = data_sec // self.bpb_header["BPB_SecPerClus"]
 
         if count_of_clusters < 4085:
