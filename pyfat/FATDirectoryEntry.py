@@ -181,6 +181,7 @@ class FATDirectoryEntry:
     def _remove_padding(self, entry: bytes):
         while entry.endswith(b'\xFF\xFF'):
             entry = entry[:-2]
+        entry = entry.replace(b'\x00', b'')
         return entry
 
     def get_long_name(self):
