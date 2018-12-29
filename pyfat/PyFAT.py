@@ -575,7 +575,7 @@ class PyFAT:
     @contextmanager
     def open_fs(filename: PathLike, offset: int = 0,
                 encoding="ibm437"):
-        pf = PyFAT(encoding=encoding)
+        pf = PyFAT(encoding=encoding, offset=offset)
         pf.open(filename)
         yield pf
         pf.close()
