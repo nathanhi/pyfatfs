@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import struct
-import warnings
 
 from contextlib import contextmanager
 from os import PathLike, SEEK_END
@@ -536,11 +535,8 @@ class PyFAT:
 
         bytes_per_cluster = self.bpb_header["BPB_BytsPerSec"] * self.bpb_header["BPB_SecPerClus"]
         if bytes_per_cluster > 32768:
-            warnings.warn("Bytes per cluster should not be more than 32K, "
-                          "but got: {}K. Trying to continue "
-                          "anyway.".format(bytes_per_cluster // 1024), Warning)
-            #raise PyFATException("Bytes per cluster cannot be more than 32K, "
-            #                     "got: \'{}K\'".format(bytes_per_cluster // 1024))
+            raise PyFATException("Bytes per cluster cannot be more than 32K, "
+                                 "got: \'{}K\'".format(bytes_per_cluster // 1024))
 
         if self.bpb_header["BPB_RsvdSecCnt"] == 0:
             raise PyFATException("Number of reserved sectors must not be 0")
