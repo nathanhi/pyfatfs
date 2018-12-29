@@ -49,6 +49,7 @@ class PyFAT:
                             'BAD_CLUSTER': 0xFF7,
                             'END_OF_CLUSTER_MIN': 0xFF8,
                             'END_OF_CLUSTER_MAX': 0xFFF}
+    FAT12_SPECIAL_EOC = 0xFF0
     #: Possible cluster values for FAT16 partitions
     FAT16_CLUSTER_VALUES = {'FREE_CLUSTER': 0x0000,
                             'MIN_DATA_CLUSTER': 0x0002,
@@ -388,6 +389,10 @@ class PyFAT:
             if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] <= self.fat[i] <= self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
                 # Normal data cluster, follow chain
                 yield address
+            elif self.fat_type == self.FAT_TYPE_FAT12 and self.fat[i] == self.FAT12_SPECIAL_EOC:
+                # Special EOC
+                yield address
+                return
             elif self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MIN"] <= self.fat[i] <= self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]:
                 # End of cluster, end chain
                 yield address
