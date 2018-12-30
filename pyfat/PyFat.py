@@ -605,4 +605,6 @@ if __name__ == '__main__':
                 print()
             print(fs.bpb_header)
             print(fs.fat_header)
+            print(fs.root_dir.get_entry("/REQUIR~1/in/test.in"))
+            print(fs.root_dir.get_entry("/"))
         print()

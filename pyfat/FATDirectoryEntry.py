@@ -131,6 +131,27 @@ class FATDirectoryEntry:
 
         return dirs, files, specials
 
+    def _search_entry(self, name):
+        # Find given dir entry by walking current dir
+        dirs, files, specials = self.get_entries()
+        for entry in dirs+files:
+            try:
+                if entry.get_long_name() == name:
+                    return entry
+            except NotAnLFNEntryException:
+                pass
+            if entry.get_short_name() == name:
+                return entry
+        else:
+            # TODO
+            raise PyFATException("404")
+
+    def get_entry(self, path):
+        entry = self
+        for segment in filter(None, path.split("/")):
+            entry = entry._search_entry(segment)
+        return entry
+
     def walk(self):
         # Walk all directory entries recursively
         # root (current path, full), dirs (all dirs), files (all files)
