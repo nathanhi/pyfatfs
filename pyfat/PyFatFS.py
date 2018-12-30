@@ -3,6 +3,7 @@
 
 from fs.base import FS
 from fs.permissions import Permissions
+from fs.info import Info
 
 from pyfat.PyFat import PyFat
 
@@ -21,11 +22,14 @@ class PyFatFS(FS):
         super(PyFatFS, self).close()
 
     def getinfo(self, path: str, namespaces):
-        print("getinfo")
+        entry = self.fs.root_dir.get_entry(path)
+        info = {"basic": {"name": repr(entry), "is_dir": entry.is_directory()}}
+        return Info(info)
 
     def listdir(self, path: str):
-
-        print("listdir")
+        dir_entry = self.fs.root_dir.get_entry(path)
+        dirs, files, specials = dir_entry.get_entries()
+        return [str(e) for e in dirs+files]
 
     def makedir(self, path: str, permissions: Permissions = None,
                 recreate: bool = False):
