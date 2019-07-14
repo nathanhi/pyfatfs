@@ -6,10 +6,10 @@ import errno
 from fs.base import FS
 from fs.permissions import Permissions
 from fs.info import Info
-from fs.errors import DirectoryExpected
+from fs.errors import DirectoryExpected, DirectoryExists, ResourceNotFound
 from fs import ResourceType
 
-from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_8dot3_name
+from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_8dot3_name, make_lfn_entry
 from pyfat.PyFat import PyFat
 from pyfat._exceptions import PyFATException
 
@@ -78,23 +78,35 @@ class PyFatFS(FS):
         base = "/".join(path.split("/")[:-1])
         dirname = path.split("/")[-1]
 
-        base = self.opendir(base)
-        print(make_8dot3_name("dirname", base))
-        """newdir = FATDirectoryEntry(DIR_Name="dirname",
+        try:
+            base = self.opendir(base)
+        except DirectoryExpected:
+            raise ResourceNotFound(path)
+
+        dirs, _, _ = base.get_entries()
+        if dirname in [str(e) for e in dirs]:
+            raise DirectoryExists(path)
+
+        short_name = make_8dot3_name(dirname, base)
+        if short_name != dirname:
+            lfn_entry = make_lfn_entry(dirname, encoding=self.fs.encoding)
+        else:
+            lfn_entry = None
+
+        newdir = FATDirectoryEntry(DIR_Name=short_name,
                                    DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                    DIR_NTRes=0,
                                    DIR_CrtTimeTenth=0,
                                    DIR_CrtDateTenth=0,
                                    DIR_LstAccessDate=0,
-                                   DIR_FstClusHI,
+                                   DIR_FstClusHI=0xFF,
                                    DIR_WrtTime=0,
                                    DIR_WrtDate=0,
-                                   DIR_FstClusLO,
+                                   DIR_FstClusLO=0xFF,
                                    DIR_FileSize=0,
                                    encoding=self.fs.encoding,
-                                   lfn_entry=None)"""
-        #print(repr(dir_entry))
-
+                                   lfn_entry=lfn_entry)
+        print(newdir.get_short_name())
         print(f"makedir '{base}' + '{dirname}'")
 
     def openbin(self, path: str, mode: str = "r",
@@ -118,7 +130,7 @@ class PyFatFS(FS):
             import sys
             sys.stdout.write(self.__fp.read(sz).decode('UTF-8'))"""
 
-    def opendir(self, path: str):
+    def opendir(self, path: str) -> FATDirectoryEntry:
         """Get a filesystem object for a sub-directory.
         :param path: str: Path to a directory on the filesystem.
         """

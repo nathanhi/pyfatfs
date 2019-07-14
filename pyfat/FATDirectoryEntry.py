@@ -296,8 +296,50 @@ def make_8dot3_name(dir_name: str, dir_entry: FATDirectoryEntry):
             maxlen = 8-(len(str(i))+1)
             basename = f"{basename[0:maxlen]}~{i}"
 
-        if f"{basename}{extsep}{extname}" not in dir_entries:
-            return basename, extname
+        short_name = f"{basename}{extsep}{extname}"
+
+        if short_name not in dir_entries:
+            return short_name
         i += 1
 
     raise PyFATException("Cannot generate 8dot3 filename, unable to find suiting short file name.")
+
+
+def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
+    lfn_entry = FATLongDirectoryEntry()
+    lfn_entry_length = 13
+    dir_name = bytearray(dir_name.encode(encoding))
+    dir_name_modulus = len(dir_name) % lfn_entry_length
+    lfn_dir_name = bytearray()
+
+    i = 0
+    while i < len(dir_name):
+        lfn_dir_name.extend([dir_name[i], 0x00])
+        i += 1
+
+    if dir_name_modulus == 0:
+        # Remove last NULL byte if string evenly fits to LFN entries
+        lfn_dir_name = lfn_dir_name[:-1]
+    else:
+        # Pad the rest with 0xFF if it doesn't fit evenly
+        padding = lfn_entry_length - (len(lfn_dir_name) % lfn_entry_length)
+        lfn_dir_name.extend([0xFF]*padding)
+
+    # Generate linked LFN entries
+    lfn_entries = len(lfn_dir_name) // lfn_entry_length*2
+    for i in range(lfn_entries):
+        n = i*lfn_entry_length*2
+        dirname1 = lfn_dir_name[n:n+10]
+        n += 10
+        dirname2 = lfn_dir_name[n:n+12]
+        n += 12
+        dirname3 = lfn_dir_name[n:n+4]
+        lfn_entry.add_lfn_entry(LDIR_Ord=i,
+                                LDIR_Name1=dirname1,
+                                LDIR_Attr=FATDirectoryEntry.ATTR_LONG_NAME,
+                                LDIR_Type=0x00,
+                                LDIR_Chksum=0x00,
+                                LDIR_Name2=dirname2,
+                                LDIR_FstClusLO=0,
+                                LDIR_Name3=dirname3)
+    return lfn_entry
