@@ -49,7 +49,7 @@ class PyFatFS(FS):
         if namespace != u'standard':
             return None
 
-        return {"case_insensitive": False,
+        return {"case_insensitive": True,
                 "invalid_path_chars": "/",
                 "max_path_length": 255,
                 "max_sys_path": None,
@@ -83,8 +83,8 @@ class PyFatFS(FS):
         except DirectoryExpected:
             raise ResourceNotFound(path)
 
-        dirs, _, _ = base.get_entries()
-        if dirname in [str(e) for e in dirs]:
+        dirs, files, _ = base.get_entries()
+        if dirname.upper() in [str(e).upper() for e in dirs+files]:
             raise DirectoryExists(path)
 
         short_name = make_8dot3_name(dirname, base)
