@@ -323,20 +323,24 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
         # Remove last NULL byte if string evenly fits to LFN entries
         lfn_dir_name = lfn_dir_name[:-1]
     else:
-        # Pad the rest with 0xFF if it doesn't fit evenly
+        # Fill the rest with 0xFF if it doesn't fit evenly
         padding = lfn_entry_length - (len(lfn_dir_name) % lfn_entry_length)
         lfn_dir_name.extend([0xFF]*padding)
 
     # Generate linked LFN entries
     lfn_entries = len(lfn_dir_name) // lfn_entry_length*2
     for i in range(lfn_entries):
+        if i == lfn_entries-1:
+            lfn_entry_ord = 0x40
+        else:
+            lfn_entry_ord = i
         n = i*lfn_entry_length*2
         dirname1 = lfn_dir_name[n:n+10]
         n += 10
         dirname2 = lfn_dir_name[n:n+12]
         n += 12
         dirname3 = lfn_dir_name[n:n+4]
-        lfn_entry.add_lfn_entry(LDIR_Ord=i,
+        lfn_entry.add_lfn_entry(LDIR_Ord=lfn_entry_ord,
                                 LDIR_Name1=dirname1,
                                 LDIR_Attr=FATDirectoryEntry.ATTR_LONG_NAME,
                                 LDIR_Type=0x00,
