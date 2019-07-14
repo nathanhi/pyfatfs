@@ -288,6 +288,8 @@ def make_8dot3_name(dir_name: str, dir_entry: FATDirectoryEntry):
         extname = dir_name.upper().rsplit(".", 1)[1][0:3]
     except IndexError:
         extname = ""
+
+    if len(extname) == 0:
         extsep = ""
 
     i = 0
