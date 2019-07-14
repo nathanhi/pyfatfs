@@ -270,3 +270,33 @@ class FATLongDirectoryEntry(object):
                 return True
 
         return False
+
+
+def make_8dot3_name(dir_name: str, dir_entry: FATDirectoryEntry):
+    dirs, files, _ = dir_entry.get_entries()
+    dir_entries = [e.get_short_name() for e in dirs+files]
+
+    extsep = "."
+
+    try:
+        basename = dir_name.upper().rsplit(".", 1)[0][0:8]
+    except IndexError:
+        basename = ""
+
+    try:
+        extname = dir_name.upper().rsplit(".", 1)[1][0:3]
+    except IndexError:
+        extname = ""
+        extsep = ""
+
+    i = 0
+    while len(str(i)) + 1 <= 7:
+        if i > 0:
+            maxlen = 8-(len(str(i))+1)
+            basename = f"{basename[0:maxlen]}~{i}"
+
+        if f"{basename}{extsep}{extname}" not in dir_entries:
+            return basename, extname
+        i += 1
+
+    raise PyFATException("Cannot generate 8dot3 filename, unable to find suiting short file name.")
