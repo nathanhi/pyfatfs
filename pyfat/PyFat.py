@@ -526,7 +526,7 @@ class PyFat:
         elif self.bpb_header["BS_jmpBoot"][0] == 0xE9:
             pass
         else:
-            raise PyFATException("Boot code must start with 0xEB or 0xE9")
+            raise PyFATException("Boot code must start with 0xEB or 0xE9. Is this a FAT partition?")
 
         if self.bpb_header["BPB_BytsPerSec"] not in [2**x for x in range(9, 13)]:
             raise PyFATException("Expected one of {} bytes per sector, got: "
