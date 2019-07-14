@@ -214,7 +214,7 @@ class FATDirectoryEntry:
         for i in sorted(self.lfn_entry.lfn_entries.keys()):
             # TODO: Verify checksum!
             for h in ["LDIR_Name1", "LDIR_Name2", "LDIR_Name3"]:
-                name += self._remove_padding(self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding).strip()
+                name += self._remove_padding(self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding)
 
         return name.strip()
 
