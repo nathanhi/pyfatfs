@@ -45,16 +45,16 @@ class FATDirectoryEntry(object):
             DIR_Name = DIR_Name.encode(encoding)
 
         self.name = DIR_Name
-        self.attr = DIR_Attr
-        self.ntres = DIR_NTRes
-        self.crttimetenth = DIR_CrtTimeTenth
-        self.crtdatetenth = DIR_CrtDateTenth
-        self.lstaccessdate = DIR_LstAccessDate
-        self.fstclushi = DIR_FstClusHI
-        self.wrttime = DIR_WrtTime
-        self.wrtdate = DIR_WrtDate
-        self.fstcluslo = DIR_FstClusLO
-        self.filesize = DIR_FileSize
+        self.attr = int(DIR_Attr)
+        self.ntres = int(DIR_NTRes)
+        self.crttimetenth = int(DIR_CrtTimeTenth)
+        self.crtdatetenth = int(DIR_CrtDateTenth)
+        self.lstaccessdate = int(DIR_LstAccessDate)
+        self.fstclushi = int(DIR_FstClusHI)
+        self.wrttime = int(DIR_WrtTime)
+        self.wrtdate = int(DIR_WrtDate)
+        self.fstcluslo = int(DIR_FstClusLO)
+        self.filesize = int(DIR_FileSize)
 
         self._parent = None
 
@@ -62,6 +62,15 @@ class FATDirectoryEntry(object):
 
         self.__dirs = set()
         self.__encoding = encoding
+
+    def byte_repr(self):
+        name = self.name
+        if name[0] == 0xE5:
+            name[0] = 0x05
+        return struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr, self.ntres,
+                           self.crttimetenth, self.crtdatetenth, self.lstaccessdate,
+                           self.fstclushi, self.wrttime, self.wrtdate, self.fstcluslo,
+                           self.filesize)
 
     def add_parent(self, cls):
         if self._parent is not None:
@@ -334,6 +343,7 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
             lfn_entry_ord = 0x40
         else:
             lfn_entry_ord = i
+
         n = i*lfn_entry_length*2
         dirname1 = lfn_dir_name[n:n+10]
         n += 10
