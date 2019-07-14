@@ -414,6 +414,7 @@ class PyFat(object):
     def close(self):
         """Close session and free up all handles."""
         self.__fp.close()
+        self.initialised = False
 
     def __del__(self):
         try:
