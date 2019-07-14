@@ -21,7 +21,7 @@ class PyFatFS(FS):
         print("Closed FS!")
         super(PyFatFS, self).close()
 
-    def getinfo(self, path: str, namespaces):
+    def getinfo(self, path: str, namespaces=None):
         entry = self.fs.root_dir.get_entry(path)
         info = {"basic": {"name": repr(entry), "is_dir": entry.is_directory()}}
         return Info(info)

@@ -5,7 +5,7 @@ import struct
 from pyfat._exceptions import PyFATException, NotAnLFNEntryException
 
 
-class FATDirectoryEntry:
+class FATDirectoryEntry(object):
     ATTR_READ_ONLY = 0x01
     ATTR_HIDDEN = 0x02
     ATTR_SYSTEM = 0x04
@@ -219,7 +219,7 @@ class FATDirectoryEntry:
         return name.strip()
 
 
-class FATLongDirectoryEntry:
+class FATLongDirectoryEntry(object):
     FAT_LONG_DIRECTORY_LAYOUT = "<B10sBBB12sH4s"
     FAT_LONG_DIRECTORY_VARS = ["LDIR_Ord", "LDIR_Name1", "LDIR_Attr",
                                "LDIR_Type", "LDIR_Chksum", "LDIR_Name2",

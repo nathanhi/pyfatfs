@@ -26,7 +26,9 @@ def _init_check(func):
     return _wrapper
 
 
-class PyFat:
+class PyFat(object):
+    """ PyFAT base class, parses generic filesystem information.
+    """
     #: Used as fat_type if unable to detect FAT type
     FAT_TYPE_UNKNOWN = 0
     #: Used as fat_type if FAT12 fs has been detected
@@ -150,13 +152,14 @@ class PyFat:
         self.parse_header()
 
         # Parse FAT
-        self.parse_fat()
+        self._parse_fat()
 
         # Parse root directory
         self.parse_root_dir()
 
     @_init_check
     def _get_total_sectors(self):
+        """Get total number of sectors for all FAT sizes."""
         if self.bpb_header["BPB_TotSec16"] != 0:
             return self.bpb_header["BPB_TotSec16"]
 
@@ -175,7 +178,8 @@ class PyFat:
                                  "cannot continue")
 
     @_init_check
-    def parse_fat(self):
+    def _parse_fat(self):
+        """Parse information in FAT."""
         # Read all FATs
         fat_size = self.bpb_header["BPB_BytsPerSec"] * self._get_fat_size_count()
 
@@ -279,12 +283,14 @@ class PyFat:
         return root_dir_entry
 
     def parse_root_dir(self):
+        """Parses root directory entry."""
         if self.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
             self.root_dir = self._fat12_parse_root_dir()
         else:
             self.root_dir = self._fat32_parse_root_dir()
 
     def parse_lfn_entries(self, address: int = None):
+        """Parse LFN entries at given address."""
         lfn_entry = FATLongDirectoryEntry()
         dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
@@ -308,6 +314,7 @@ class PyFat:
         return address, lfn_entry
 
     def __parse_dir_entry(self, address):
+        """Parse directory entry at given address."""
         self.__seek(address)
         dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
         dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT,
@@ -316,6 +323,7 @@ class PyFat:
         return dir_hdr
 
     def __parse_dir_entries_in_range(self, address, max_bytes):
+        """Retrieves directory entries in a range."""
         dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
         if max_bytes % dir_hdr_sz != 0:
             raise PyFATException("Cannot parse directory entries "
@@ -338,6 +346,7 @@ class PyFat:
         return list(filter(None.__ne__, dir_entries))
 
     def parse_dir_entries(self, address: int = 0):
+        """Get directory entries at given address."""
         lfn_entry = None
         dir_hdr = self.__parse_dir_entry(address)
 
@@ -382,6 +391,7 @@ class PyFat:
 
     @_init_check
     def get_cluster_chain(self, first_cluster):
+        """Follow a cluster chain beginning with the first cluster address."""
         i = first_cluster
         while i <= len(self.fat):
             # First two cluster entries are reserved
@@ -415,7 +425,14 @@ class PyFat:
 
     @_init_check
     def close(self):
+        """Close session and free up all handles."""
         self.__fp.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except PyFATException:
+            pass
 
     def __determine_fat_type(self):
         """Determine FAT size
@@ -445,7 +462,7 @@ class PyFat:
         return fat_type
 
     def __parse_fat12_header(self):
-        """Parses a FAT12/16 header"""
+        """Parse FAT12/16 header"""
         self.__seek(0)
         boot_sector = self.__fp.read(512)
         header = struct.unpack(self.fat12_header_layout,
@@ -453,6 +470,7 @@ class PyFat:
         self.fat_header = dict(zip(self.fat12_header_vars, header))
 
     def __parse_fat32_header(self):
+        """Parse FAT32 header."""
         self.__seek(0)
         boot_sector = self.__fp.read(512)
         header = struct.unpack(self.fat32_header_layout,
