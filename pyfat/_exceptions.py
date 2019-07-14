@@ -2,8 +2,9 @@
 
 
 class PyFATException(Exception):
-    def __init__(self, msg):
+    def __init__(self, msg, errno=None):
         Exception.__init__(self, msg)
+        self.errno = errno
 
 
 class NotAnLFNEntryException(PyFATException):

@@ -4,6 +4,8 @@ import struct
 
 from pyfat._exceptions import PyFATException, NotAnLFNEntryException
 
+import errno
+
 
 class FATDirectoryEntry(object):
     ATTR_READ_ONLY = 0x01
@@ -84,7 +86,7 @@ class FATDirectoryEntry(object):
         return self._parent._get_parent_dir(sd)
 
     def get_parent_dir(self):
-        # Iterate all parents up and join them by "/"
+        """Iterate all parents up and join them by "/"."""
         parent_dirs = [self.__repr__()]
 
         if self._parent is None:
@@ -143,8 +145,7 @@ class FATDirectoryEntry(object):
             if entry.get_short_name() == name:
                 return entry
         else:
-            # TODO
-            raise PyFATException("404")
+            raise PyFATException(f'Cannot find entry {name}', errno=errno.ENOENT)
 
     def get_entry(self, path):
         entry = self

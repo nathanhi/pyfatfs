@@ -377,19 +377,6 @@ class PyFat(object):
         return address, dir_entry
 
     @_init_check
-    def get_file_from_cluster(self, cluster, outfile):
-        with open(outfile, "wb") as f:
-            fullsize = 144
-            fsz = 0
-            for i in self.get_cluster_chain(cluster):
-                self.__seek(i)
-                sz = self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"]
-                if fsz + sz > fullsize:
-                    sz = fullsize - fsz
-                fsz += sz
-                f.write(self.__fp.read(sz))
-
-    @_init_check
     def get_cluster_chain(self, first_cluster):
         """Follow a cluster chain beginning with the first cluster address."""
         i = first_cluster
