@@ -63,14 +63,36 @@ class FATDirectoryEntry(object):
         self.__dirs = set()
         self.__encoding = encoding
 
+    def get_entry_size(self):
+        """Return size of directory entry."""
+        sz = self.FAT_DIRECTORY_HEADER_SIZE
+        if isinstance(self.lfn_entry, FATLongDirectoryEntry):
+            sz *= len(self.lfn_entry.lfn_entries)
+        return sz
+
+    def get_size(self):
+        """Return filesize or directory entry size in bytes."""
+        if self.is_directory():
+            sz = self.FAT_DIRECTORY_HEADER_SIZE
+            sz *= len(self.__dirs)+1
+            return sz
+
+        return self.filesize
+
     def byte_repr(self):
         name = self.name
         if name[0] == 0xE5:
             name[0] = 0x05
-        return struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr, self.ntres,
-                           self.crttimetenth, self.crtdatetenth, self.lstaccessdate,
-                           self.fstclushi, self.wrttime, self.wrtdate, self.fstcluslo,
-                           self.filesize)
+
+        entry = struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr, self.ntres,
+                            self.crttimetenth, self.crtdatetenth, self.lstaccessdate,
+                            self.fstclushi, self.wrttime, self.wrtdate, self.fstcluslo,
+                            self.filesize)
+
+        if isinstance(self.lfn_entry, FATLongDirectoryEntry):
+            entry += self.lfn_entry.byte_repr()
+
+        return entry
 
     def add_parent(self, cls):
         if self._parent is not None:
@@ -238,6 +260,17 @@ class FATLongDirectoryEntry(object):
 
     def __init__(self):
         self.lfn_entries = {}
+
+    def byte_repr(self):
+        entries_bytes = b""
+        for e in self.lfn_entries.keys():
+            e = self.lfn_entries[e]
+            entries_bytes += struct.pack(self.FAT_LONG_DIRECTORY_LAYOUT,
+                                         e["LDIR_Ord"], e["LDIR_Name1"],
+                                         e["LDIR_Attr"], e["LDIR_Type"],
+                                         e["LDIR_Chksum"], e["LDIR_Name2"],
+                                         e["LDIR_FstClusLO"], e["LDIR_Name3"])
+        return entries_bytes
 
     @staticmethod
     def is_lfn_entry(LDIR_Ord, LDIR_Attr):

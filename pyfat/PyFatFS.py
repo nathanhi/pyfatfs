@@ -106,7 +106,11 @@ class PyFatFS(FS):
                                    DIR_FileSize=0,
                                    encoding=self.fs.encoding,
                                    lfn_entry=lfn_entry)
-        print(newdir.get_short_name())
+        print(vars(newdir))
+        print(newdir.byte_repr())
+        print(f"Entry size: {newdir.get_entry_size()}")
+        print(f"Directory size: {newdir.get_size()}")
+        self.fs.allocate_bytes_in_fat(newdir.get_entry_size())
         print(f"makedir '{base}' + '{dirname}'")
 
     def openbin(self, path: str, mode: str = "r",
