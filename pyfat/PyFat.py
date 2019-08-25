@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import math
 import struct
 import warnings
 
@@ -235,9 +235,52 @@ class PyFat(object):
             else:
                 raise PyFATException("Unknown FAT type, cannot continue")
 
-            # Increase counter
             curr += int(fat_entry_size)
             cluster += 1
+
+    @_init_check
+    def allocate_bytes(self, size: int):
+        """Allocate cluster in FAT."""
+        # Calculate number of clusters required for file
+        num_clusters = size / self.bytes_per_cluster
+        num_clusters = math.ceil(num_clusters)
+
+        # Fill list of found free clusters
+        free_clusters = []
+        for i in range(0, len(self.fat)):
+            if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] > i > self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
+                # Ignore out of bound entries
+                continue
+
+            if num_clusters == len(free_clusters):
+                # Allocated enough clusters!
+                break
+
+            if self.fat[i] == self.FAT_CLUSTER_VALUES[self.fat_type]["FREE_CLUSTER"]:
+                if i == self.FAT_CLUSTER_VALUES[self.fat_type]["BAD_CLUSTER"]:
+                    # Do not allocate a BAD_CLUSTER
+                    continue
+
+                if self.fat_type == self.FAT_TYPE_FAT12 and i == self.FAT12_SPECIAL_EOC:
+                    # Do not allocate special EOC marker on FAT12
+                    continue
+
+                free_clusters += [i]
+        else:
+            free_space = len(free_clusters) * self.bytes_per_cluster
+            raise PyFATException(f"Not enough free space to allocate {size} bytes ({free_space} bytes free)")
+
+        # Allocate cluster chain in FAT
+        for i in range(0, len(free_clusters)):
+            try:
+                self.fat[free_clusters[i]] = free_clusters[i+1]
+            except IndexError:
+                self.fat[free_clusters[i]] = self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]
+
+        # TODO: Write FAT to disk
+        pass
+
+        return free_clusters
 
     def _fat12_parse_root_dir(self):
         """Parses the FAT12/16 root dir entries.
