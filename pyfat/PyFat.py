@@ -442,9 +442,9 @@ class PyFat(object):
                 raise PyFATException("Bad cluster found in FAT cluster "
                                      "chain, cannot access file")
             elif self.fat[i] == self.FAT_CLUSTER_VALUES[self.fat_type]["FREE_CLUSTER"]:
-                # FREE_CLUSTER mark when following a chain is treated as EOC
-                yield address
-                return
+                # FREE_CLUSTER mark when following a chain is treated as an error
+                raise PyFATException("FREE_CLUSTER mark found in FAT cluster "
+                                     "chain, cannot access file")
             else:
                 raise PyFATException("Invalid or unknown FAT cluster "
                                      "entry found with value "
