@@ -44,11 +44,10 @@ class PyFat(object):
                 FAT_TYPE_FAT16: b"FAT16   ",
                 FAT_TYPE_FAT32: b"FAT32   "}
 
-    # TODO: FAT32: Never allocate FAT32_BAD_CLUSTER_MARK as normal cluster
     #: Possible cluster values for FAT12 partitions
     FAT12_CLUSTER_VALUES = {'FREE_CLUSTER': 0x000,
                             'MIN_DATA_CLUSTER': 0x002,
-                            'MAX_DATA_CLUSTER': 0xFEF,
+                            'MAX_DATA_CLUSTER': 0xFF5,
                             'BAD_CLUSTER': 0xFF7,
                             'END_OF_CLUSTER_MIN': 0xFF8,
                             'END_OF_CLUSTER_MAX': 0xFFF}
@@ -56,14 +55,14 @@ class PyFat(object):
     #: Possible cluster values for FAT16 partitions
     FAT16_CLUSTER_VALUES = {'FREE_CLUSTER': 0x0000,
                             'MIN_DATA_CLUSTER': 0x0002,
-                            'MAX_DATA_CLUSTER': 0xFFEF,
+                            'MAX_DATA_CLUSTER': 0xFFF5,
                             'BAD_CLUSTER': 0xFFF7,
-                            'END_OF_CLUSTER_MIN': 0xFFF0,
+                            'END_OF_CLUSTER_MIN': 0xFFF8,
                             'END_OF_CLUSTER_MAX': 0xFFFF}
     #: Possible cluster values for FAT32 partitions
     FAT32_CLUSTER_VALUES = {'FREE_CLUSTER': 0x0000000,
                             'MIN_DATA_CLUSTER': 0x0000002,
-                            'MAX_DATA_CLUSTER': 0xFFFFFEF,
+                            'MAX_DATA_CLUSTER': 0xFFFFFF5,
                             'BAD_CLUSTER': 0xFFFFFF7,
                             'END_OF_CLUSTER_MIN': 0xFFFFFF8,
                             'END_OF_CLUSTER_MAX': 0xFFFFFFF}
