@@ -6,6 +6,6 @@ who needs to access or modify files on a FAT filesystem."""
 from pyfat import PyFatFSOpener
 
 __version__ = '0.0.0'
-__author__ = 'Drägerwerk AG & Co. KGaA'
-__author_email__ = 'nathan-jedidja.hirschauer <at> draeger.com'
+__author__ = 'nathanhi'
+__author_email__ = 'nathanhi <at> deepserve.info'
 __license__ = 'MIT License'
