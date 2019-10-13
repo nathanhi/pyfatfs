@@ -1,7 +1,7 @@
 pyfat
 =====
 
-.. image:: https://img.shields.io/travis/nathanhi/pyfat/master.svg?style=flat&maxAge=300
+.. image:: https://img.shields.io/travis/nathanhi/pyfat/wip.svg?style=flat&maxAge=300
     :target: https://travis-ci.org/nathanhi/pyfat
     :alt: ci build status
 
