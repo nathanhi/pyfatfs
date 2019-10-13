@@ -51,7 +51,7 @@ encoding. Any encoding known by Python can be used as value for this parameter.
 .. code-block:: python
 
     import fs
-    my_fs = fs.open_fs("fat:///dev/sda?encoding=cp1252")
+    my_fs = fs.open_fs("fat:///dev/sda1?encoding=cp1252")
 
 
 offset
