@@ -384,7 +384,7 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
     # Generate linked LFN entries
     lfn_entries = len(lfn_dir_name) // lfn_entry_length*2
     for i in range(lfn_entries):
-        if i == lfn_entries-1:
+        if i == lfn_entries:
             lfn_entry_ord = 0x40
         else:
             lfn_entry_ord = i
@@ -395,6 +395,7 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
         dirname2 = lfn_dir_name[n:n+12]
         n += 12
         dirname3 = lfn_dir_name[n:n+4]
+        # TODO: Generate checksum
         lfn_entry.add_lfn_entry(LDIR_Ord=lfn_entry_ord,
                                 LDIR_Name1=dirname1,
                                 LDIR_Attr=FATDirectoryEntry.ATTR_LONG_NAME,
