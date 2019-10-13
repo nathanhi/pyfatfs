@@ -288,12 +288,19 @@ class PyFat(object):
         and is therefore size limited (BPB_RootEntCnt).
         """
         root_dir_byte = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
-        root_dir_entry = FATDirectoryEntry("/",
-                                           FATDirectoryEntry.ATTR_DIRECTORY,
-                                           "0", "0", "0", "0", "0", "0", "0",
-                                           self.root_dir_sector //
-                                           self.bpb_header["BPB_SecPerClus"],
-                                           "0", encoding=self.encoding)
+        root_dir_entry = FATDirectoryEntry(DIR_Name="/",
+                                           DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                           DIR_NTRes=0,
+                                           DIR_CrtTimeTenth=0,
+                                           DIR_CrtDateTenth=0,
+                                           DIR_LstAccessDate=0,
+                                           DIR_FstClusHI=0,
+                                           DIR_WrtTime=0,
+                                           DIR_WrtDate=0,
+                                           DIR_FstClusLO=0,
+                                           DIR_FileSize=0,
+                                           encoding=self.encoding)
+        root_dir_entry.set_cluster(self.root_dir_sector // self.bpb_header["BPB_SecPerClus"])
 
         max_bytes = self.bpb_header["BPB_RootEntCnt"] * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
