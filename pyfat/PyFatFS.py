@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import errno
+import sys
 
 from fs.base import FS
 from fs.permissions import Permissions
@@ -78,6 +79,7 @@ class PyFatFS(FS):
         base = "/".join(path.split("/")[:-1])
         dirname = path.split("/")[-1]
 
+        # Plausability checks
         try:
             base = self.opendir(base)
         except DirectoryExpected:
@@ -87,6 +89,7 @@ class PyFatFS(FS):
         if dirname.upper() in [str(e).upper() for e in dirs+files]:
             raise DirectoryExists(path)
 
+        # Determine file name + LFN
         short_name = make_8dot3_name(dirname, base)
         if short_name != dirname:
             lfn_entry = make_lfn_entry(dirname, encoding=self.fs.encoding)
@@ -99,18 +102,71 @@ class PyFatFS(FS):
                                    DIR_CrtTimeTenth=0,
                                    DIR_CrtDateTenth=0,
                                    DIR_LstAccessDate=0,
-                                   DIR_FstClusHI=0xFF,
+                                   DIR_FstClusHI=0x00,
                                    DIR_WrtTime=0,
                                    DIR_WrtDate=0,
-                                   DIR_FstClusLO=0xFF,
+                                   DIR_FstClusLO=0x00,
                                    DIR_FileSize=0,
                                    encoding=self.fs.encoding,
                                    lfn_entry=lfn_entry)
-        print(vars(newdir))
-        print(newdir.byte_repr())
-        print(f"Entry size: {newdir.get_entry_size()}")
-        print(f"Directory size: {newdir.get_size()}")
-        self.fs.allocate_bytes_in_fat(newdir.get_entry_size())
+
+        # Determine position in FAT
+        base_cluster_size = 0
+        base_cluster_chain = []
+        for c in self.fs.get_cluster_chain(base.get_cluster()):
+            base_cluster_chain += [c]
+            base_cluster_size += self.fs.bytes_per_cluster
+
+        dirs, files, _ = base.get_entries()
+        base_entries_bytes = 0
+
+        for e in dirs + files:
+            base_entries_bytes += e.get_entry_size()
+
+        base_cluster_free = base_cluster_size - base_entries_bytes
+        if newdir.get_entry_size() > base_cluster_free:
+            # Enhance chain if entries exhausted; FAT32 only
+            if self.fs.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
+                raise PyFATException("Cannot create directory, maximum root "
+                                     "directory entries exhausted!")
+
+            required_bytes = newdir.get_entry_size() - base_cluster_free
+            new_chain = self.fs.allocate_bytes(required_bytes)[0]
+            self.fs.fat[base_cluster_chain[-1:]] = new_chain
+
+        # Create . and .. directory entries
+        first_cluster = self.fs.allocate_bytes(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE * 2)[0]
+        newdir.set_cluster(first_cluster)
+        dot = FATDirectoryEntry(DIR_Name=".",
+                                DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                DIR_NTRes=newdir.ntres,
+                                DIR_CrtTimeTenth=newdir.crttimetenth,
+                                DIR_CrtDateTenth=newdir.crtdatetenth,
+                                DIR_LstAccessDate=newdir.lstaccessdate,
+                                DIR_FstClusHI=newdir.fstclushi,
+                                DIR_WrtTime=newdir.wrttime,
+                                DIR_WrtDate=newdir.wrtdate,
+                                DIR_FstClusLO=newdir.fstcluslo,
+                                DIR_FileSize=newdir.filesize,
+                                encoding=self.fs.encoding)
+        dotdot = FATDirectoryEntry(DIR_Name="..",
+                                   DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                   DIR_NTRes=base.ntres,
+                                   DIR_CrtTimeTenth=base.crttimetenth,
+                                   DIR_CrtDateTenth=base.crtdatetenth,
+                                   DIR_LstAccessDate=base.lstaccessdate,
+                                   DIR_FstClusHI=base.fstclushi,
+                                   DIR_WrtTime=base.wrttime,
+                                   DIR_WrtDate=base.wrtdate,
+                                   DIR_FstClusLO=base.fstcluslo,
+                                   DIR_FileSize=base.filesize,
+                                   encoding=self.fs.encoding)
+
+        # TODO: Flush dot and dotdot entries to disk
+
+        # TODO: Flush directory entry to disk
+        start_cluster = base_entries_bytes // self.fs.bytes_per_cluster
+
         print(f"makedir '{base}' + '{dirname}'")
 
     def openbin(self, path: str, mode: str = "r",
