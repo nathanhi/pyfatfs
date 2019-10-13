@@ -3,5 +3,9 @@ python:
   - '3.5'
   - '3.6'
   - '3.7'
-  - '3.8'
-script: python setup.py test
+  - '3.8-dev'
+  - 'pypy3'
+install:
+  - pip install -r requirements/development.txt
+script:
+  - python setup.py test
