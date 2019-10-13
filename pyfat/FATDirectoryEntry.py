@@ -79,6 +79,15 @@ class FATDirectoryEntry(object):
 
         return self.filesize
 
+    def get_cluster(self):
+        """Return cluster address of directory entry."""
+        return self.fstcluslo + (self.fstclushi << 16)
+
+    def set_cluster(self, first_cluster):
+        """Convert first_cluster to low and high word and set headers."""
+        self.fstcluslo = (first_cluster >> (16 * 0) & 0xFFFF)
+        self.fstclushi = (first_cluster >> (16 * 1) & 0xFFFF)
+
     def byte_repr(self):
         name = self.name
         if name[0] == 0xE5:
