@@ -66,6 +66,19 @@ complete disk images can be read if the location of the partition is known:
     my_fs = fs.open_fs("fat:///dev/sda?offset=32256")
 
 
+preserve_case
+^^^^^^^^^^^^^
+
+Preserve case when creating files. This will force LFN entries for all
+created files that do not match the 8DOT3 rules. This defaults to true
+but can be disabled by setting preserve_case to false:
+
+.. code-block:: python
+
+    import fs
+    my_fs = fs.open_fs("fat:///dev/sda1?preserve_case=false")
+
+
 Testing
 -------
 
