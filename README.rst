@@ -1,8 +1,8 @@
 pyfat
 =====
 
-.. image:: https://img.shields.io/travis/Draegerwerk/pyfat/master.svg?style=flat&maxAge=300
-    :target: https://travis-ci.org/Draegerwerk/pyfat
+.. image:: https://img.shields.io/travis/nathanhi/pyfat/master.svg?style=flat&maxAge=300
+    :target: https://travis-ci.org/nathanhi/pyfat
     :alt: ci build status
 
 pyfat is a filesystem module for use with PyFilesystem2 for anyone
