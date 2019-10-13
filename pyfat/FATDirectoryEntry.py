@@ -365,6 +365,9 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
     dir_name_modulus = len(dir_name) % lfn_entry_length
     lfn_dir_name = bytearray()
 
+    if len(dir_name) > 255:
+        raise PyFATException("Long file name exceeds 255 characters, not supported.")
+
     i = 0
     while i < len(dir_name):
         lfn_dir_name.extend([dir_name[i], 0x00])
