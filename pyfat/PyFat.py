@@ -208,7 +208,7 @@ class PyFat(object):
         # FAT16: 16 bits (2 bytes) per FAT entry
         # FAT32: 32 bits (4 bytes) per FAT entry
         fat_entry_size = self.fat_type / 8
-        total_entries = int(fat_size // fat_entry_size)
+        total_entries = fat_size // int(fat_entry_size)
         self.fat = [None] * total_entries
 
         curr = 0
@@ -218,6 +218,11 @@ class PyFat(object):
             offset = int(curr + incr)
 
             if self.fat_type == self.FAT_TYPE_FAT12:
+                if curr == (fat_size-1):
+                    # Sector boundary case for FAT12
+                    del self.fat[-1]
+                    break
+
                 self.fat[cluster] = struct.unpack("<H", fats[0][curr:offset])[0]
                 if curr % 2 == 0:
                     # Even: Only fetch low 12 bits
