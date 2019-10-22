@@ -209,12 +209,12 @@ class PyFat(object):
         # FAT32: 32 bits (4 bytes) per FAT entry
         fat_entry_size = self.fat_type / 8
         total_entries = int(fat_size // fat_entry_size)
-        self.fat = [0x0]*(total_entries+1)
+        self.fat = [None] * total_entries
 
         curr = 0
         cluster = 0
-        while curr < total_entries:
-            incr = -(-self.fat_type // 8)
+        incr = -(-self.fat_type // 8)
+        while curr < fat_size:
             offset = int(curr + incr)
 
             if self.fat_type == self.FAT_TYPE_FAT12:
