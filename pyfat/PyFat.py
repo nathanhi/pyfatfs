@@ -613,8 +613,8 @@ class PyFat(object):
                                                 0xfc, 0xfd, 0xfe, 0xff]:
             raise PyFATException("Invalid media type")
 
-        if self.bpb_header["BPB_NumFATS"] not in [1, 2]:
-            raise PyFATException("Expected 1 or 2 FATs")
+        if self.bpb_header["BPB_NumFATS"] < 1:
+            raise PyFATException("At least one FAT expected, None found.")
 
         root_entry_count = (self.bpb_header["BPB_RootEntCnt"] * 32) % self.bpb_header["BPB_BytsPerSec"]
         if self.bpb_header["BPB_RootEntCnt"] != 0 and root_entry_count != 0:
