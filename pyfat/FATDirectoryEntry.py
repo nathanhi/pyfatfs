@@ -38,7 +38,7 @@ class FATDirectoryEntry(object):
 
             if DIR_Name[0] == 0x05:
                 # Translate 0x05 to 0xE5
-                DIR_Name[0] = 0xE5
+                DIR_Name = DIR_Name.replace(bytes(0x05), bytes(0xE5), 1)
 
         if isinstance(DIR_Name, str):
             # Encode it to given encoding
