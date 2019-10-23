@@ -306,12 +306,11 @@ class PyFat(object):
                                            DIR_FileSize=0,
                                            encoding=self.encoding)
         root_dir_entry.set_cluster(self.root_dir_sector // self.bpb_header["BPB_SecPerClus"])
-
         max_bytes = self.bpb_header["BPB_RootEntCnt"] * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         # Parse all directory entries in root directory
-        for dir_entry in self.__parse_dir_entries_in_range(root_dir_byte,
-                                                           max_bytes):
+        subdirs, _ = self.parse_dir_entries_in_address(root_dir_byte, root_dir_byte + max_bytes)
+        for dir_entry in subdirs:
             root_dir_entry.add_subdirectory(dir_entry)
 
         return root_dir_entry
@@ -329,11 +328,9 @@ class PyFat(object):
                                            "0", encoding=self.encoding)
 
         # Follow root directory cluster chain
-        for root_dir_byte in self.get_cluster_chain(root_dir_entry_cluster):
-            # Parse all directory entries in chain
-            max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
-            for dir_entry in self.__parse_dir_entries_in_range(root_dir_byte, max_bytes):
-                root_dir_entry.add_subdirectory(dir_entry)
+        for dir_entry in self.parse_dir_entries_in_cluster_chain(root_dir_entry_cluster):
+            root_dir_entry.add_subdirectory(dir_entry)
+
         return root_dir_entry
 
     def parse_root_dir(self):
@@ -343,29 +340,19 @@ class PyFat(object):
         else:
             self.root_dir = self._fat32_parse_root_dir()
 
-    def parse_lfn_entries(self, address: int = None):
-        """Parse LFN entries at given address."""
-        lfn_entry = FATLongDirectoryEntry()
+    def parse_lfn_entry(self,
+                        lfn_entry: FATLongDirectoryEntry = None,
+                        address: int = 0):
+        """Parse LFN entry at given address."""
         dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
-        # Parse until given entry is not an LFN entry anymore
-        while True:
-            self.__seek(address)
-            lfn_dir_data = self.__fp.read(dir_hdr_sz)
-            lfn_dir_hdr = struct.unpack(
-                FATLongDirectoryEntry.FAT_LONG_DIRECTORY_LAYOUT, lfn_dir_data)
-            lfn_dir_hdr = dict(
-                zip(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_VARS,
-                    lfn_dir_hdr))
+        self.__seek(address)
+        lfn_dir_data = self.__fp.read(dir_hdr_sz)
 
-            try:
-                lfn_entry.add_lfn_entry(**lfn_dir_hdr)
-            except NotAnLFNEntryException:
-                break
+        lfn_dir_hdr = struct.unpack(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_LAYOUT, lfn_dir_data)
+        lfn_dir_hdr = dict(zip(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_VARS, lfn_dir_hdr))
 
-            address += dir_hdr_sz
-
-        return address, lfn_entry
+        lfn_entry.add_lfn_entry(**lfn_dir_hdr)
 
     def __parse_dir_entry(self, address):
         """Parse directory entry at given address."""
@@ -376,59 +363,65 @@ class PyFat(object):
         dir_hdr = dict(zip(FATDirectoryEntry.FAT_DIRECTORY_VARS, dir_hdr))
         return dir_hdr
 
-    def __parse_dir_entries_in_range(self, address, max_bytes):
-        """Retrieves directory entries in a range."""
-        dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
-        if max_bytes % dir_hdr_sz != 0:
-            raise PyFATException("Cannot parse directory entries "
-                                 "in the next \'{}\' bytes, must divide "
-                                 "without remainder.".format(max_bytes))
+    def parse_dir_entries_in_address(self,
+                                     address: int = 0,
+                                     max_address: int = 0,
+                                     tmp_lfn_entry: FATLongDirectoryEntry = FATLongDirectoryEntry()):
+        """Parses directory entries in address range."""
+        dir_hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+
+        if max_address == 0:
+            max_address = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         dir_entries = []
-        max_address = address + (max_bytes - dir_hdr_sz)
-        for i in range(address, max_address, dir_hdr_sz):
-            if address > i:
-                # We might have skipped a few entries due to LFN entries
-                continue
-            if address > max_address:
-                break
 
-            address, dir_entry = self.parse_dir_entries(address)
-            address += dir_hdr_sz
+        for hdr_addr in range(address, max_address, dir_hdr_size):
+            # Parse each entry
+            dir_hdr = self.__parse_dir_entry(hdr_addr)
+
+            if dir_hdr["DIR_Name"][0] == 0x0 or dir_hdr["DIR_Name"][0] == 0xE5:
+                # Empty directory entry, ignore and reset LFN entries
+                tmp_lfn_entry = FATLongDirectoryEntry()
+                continue
+
+            # Long File Names
+            if FATLongDirectoryEntry.is_lfn_entry(dir_hdr["DIR_Name"],
+                                                  dir_hdr["DIR_Attr"]):
+                self.parse_lfn_entry(tmp_lfn_entry, hdr_addr)
+                continue
+
+            # Normal directory entries
+            if not tmp_lfn_entry.is_lfn_entry_complete():
+                # Ignore incomplete LFN entries altogether
+                tmp_lfn_entry = None
+
+            dir_entry = FATDirectoryEntry(encoding=self.encoding,
+                                          lfn_entry=tmp_lfn_entry,
+                                          **dir_hdr)
             dir_entries += [dir_entry]
 
-        return list(filter(None.__ne__, dir_entries))
+            if dir_entry.is_directory() and not dir_entry.is_special():
+                # Iterate all subdirectories except for dot and dotdot
+                subdirs = self.parse_dir_entries_in_cluster_chain(dir_entry.get_cluster())
+                for d in subdirs:
+                    dir_entry.add_subdirectory(d)
 
-    def parse_dir_entries(self, address: int = 0):
-        """Get directory entries at given address."""
-        lfn_entry = None
-        dir_hdr = self.__parse_dir_entry(address)
+            # Reset temporary LFN entry
+            tmp_lfn_entry = FATLongDirectoryEntry()
 
-        if FATLongDirectoryEntry.is_lfn_entry(dir_hdr["DIR_Name"],
-                                              dir_hdr["DIR_Attr"]):
-            # Parse LFN entries and continue at given address
-            address, lfn_entry = self.parse_lfn_entries(address)
+        return dir_entries, tmp_lfn_entry
 
-            # Re-read following directory entry
-            dir_hdr = self.__parse_dir_entry(address)
+    def parse_dir_entries_in_cluster_chain(self, cluster):
+        """Parses directory entries while following given cluster chain."""
+        dir_entries = []
+        tmp_lfn_entry = FATLongDirectoryEntry()
+        for b in self.get_cluster_chain(cluster):
+            # Parse all directory entries in chain
+            max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
+            tmp_dir_entries, tmp_lfn_entry = self.parse_dir_entries_in_address(b, b+max_bytes, tmp_lfn_entry)
+            dir_entries += tmp_dir_entries
 
-        if dir_hdr["DIR_Name"][0] == 0x0 or dir_hdr["DIR_Name"][0] == 0xE5:
-            # Empty directory entry
-            return address, None
-
-        dir_entry = FATDirectoryEntry(encoding=self.encoding,
-                                      lfn_entry=lfn_entry, **dir_hdr)
-
-        if dir_entry.is_directory() and not dir_entry.is_special():
-            # Iterate all subdirectories except for dot and dotdot
-            for dir_byte in self.get_cluster_chain(dir_hdr["DIR_FstClusLO"]):
-                max_bytes = self.bpb_header["BPB_SecPerClus"] * \
-                            self.bpb_header["BPB_BytsPerSec"]
-                for de in self.__parse_dir_entries_in_range(dir_byte,
-                                                            max_bytes):
-                    dir_entry.add_subdirectory(de)
-
-        return address, dir_entry
+        return dir_entries
 
     @_init_check
     def get_cluster_chain(self, first_cluster):
