@@ -415,9 +415,9 @@ class PyFat(object):
         """Parses directory entries while following given cluster chain."""
         dir_entries = []
         tmp_lfn_entry = FATLongDirectoryEntry()
+        max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
         for b in self.get_cluster_chain(cluster):
             # Parse all directory entries in chain
-            max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
             tmp_dir_entries, tmp_lfn_entry = self.parse_dir_entries_in_address(b, b+max_bytes, tmp_lfn_entry)
             dir_entries += tmp_dir_entries
 
