@@ -6,7 +6,8 @@ python:
   - 'pypy3'
 
 install:
-  - pip install -r requirements/development.txt
+  - pip install -r requirements/tasks.txt
+  - pip-sync requirements/development.txt
   - pip install -e .
 
 script:
