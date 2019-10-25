@@ -7,6 +7,9 @@ pyfat
 .. image:: https://img.shields.io/coveralls/nathanhi/pyfat.svg?maxAge=2592000&style=flat-square
     :target: https://coveralls.io/github/nathanhi/pyfat
     :alt: Test coverage overview
+.. image:: https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue?style=flat-square
+    :target: https://github.com/nathanhi/pyfat
+    :alt: Python compatibility matrix
 .. image:: https://img.shields.io/github/license/nathanhi/pyfat.svg?maxAge=2592000&style=flat-square
     :target: https://github.com/nathanhi/pyfat/blob/HEAD/LICENSE
     :alt: MIT License
