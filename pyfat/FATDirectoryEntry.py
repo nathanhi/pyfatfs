@@ -95,6 +95,12 @@ class FATDirectoryEntry(object):
         self.__dirs = set()
         self.__encoding = encoding
 
+        if not is_8dot3_conform(self.get_short_name()):
+            raise PyFATException(f"Given directory name "
+                                 f"{self.get_short_name()} is not conform "
+                                 f"to 8.3 file naming convention.",
+                                 errno=errno.EINVAL)
+
     def get_entry_size(self):
         """Get size of directory entry.
 
