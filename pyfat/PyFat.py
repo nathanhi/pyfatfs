@@ -9,7 +9,7 @@ from os import PathLike
 from io import BufferedReader, open
 
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
-from pyfat._exceptions import PyFATException, NotAnLFNEntryException
+from pyfat._exceptions import PyFATException
 
 
 def _init_check(func):
@@ -620,44 +620,10 @@ class PyFat(object):
 
     @staticmethod
     @contextmanager
-    def new_fs(file):
-        print("hye")
-        yield file
-        print("bye")
-
-    @staticmethod
-    @contextmanager
     def open_fs(filename: PathLike, offset: int = 0,
                 encoding="ibm437"):
+        """Context manager for direct use of PyFAT."""
         pf = PyFat(encoding=encoding, offset=offset)
         pf.open(filename)
         yield pf
         pf.close()
-
-
-if __name__ == '__main__':
-    foo = {#"efifs32": ("/dev/sda1", 0, "ibm437"),
-           #"win98fs": ("/tmp/win98.img", 32256, "cp1252"),
-           #"winMEfs": ("/tmp/winme.img", 32256, "cp1252"),
-           #"dosfs16": ("/tmp/fat16_dosfs.img", 0, "ibm437"),
-           #"msdos622": ("/tmp/hda1.img", 0, "ibm437"),
-           "dosfs16 + vfat": ("/tmp/vfat16_dosfs.img", 0, "ibm437"),
-           #"dosfs12": ("/tmp/fat12_dosfs.img", 0, "ibm437")
-           }
-
-    for f in foo:
-        print(f)
-        print('='*len(f))
-        with PyFat.open_fs(foo[f][0],
-                           offset=foo[f][1],
-                           encoding=foo[f][2]) as fs:
-            for root, dirs, files in fs.root_dir.walk():
-                print("root: {}".format(root))
-                print("dirs: {}".format(dirs))
-                print("files: {}".format(files))
-                print()
-            print(fs.bpb_header)
-            print(fs.fat_header)
-            print(fs.root_dir.get_entry("/REQUIR~1/in/test.in"))
-            print(fs.root_dir.get_entry("/"))
-        print()
