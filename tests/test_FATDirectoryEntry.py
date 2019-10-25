@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 
+"""Tests the FATDirectoryEntry module."""
+
 from unittest import mock
 
 import pytest
 
-from pyfat.FATDirectoryEntry import FATDirectoryEntry, is_8dot3_conform, make_8dot3_name
+from pyfat.FATDirectoryEntry import FATDirectoryEntry, is_8dot3_conform,\
+    make_8dot3_name
 
 
 def test_invalid_dirname():
+    """Test that invalid directory names are correctly detected."""
     with pytest.raises(NotADirectoryError):
         FATDirectoryEntry(DIR_Name=b'\x00',
                           DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
@@ -63,7 +67,8 @@ def test_make_8dot3_name_collision():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
     fde_sub = mock.MagicMock()
-    fde_sub.get_short_name.side_effect = ["THIS IS .TXT", "THIS I~1.TXT", "THIS I~2.TXT"]
+    fde_sub.get_short_name.side_effect = ["THIS IS .TXT", "THIS I~1.TXT",
+                                          "THIS I~2.TXT"]
     fde.get_entries.return_value = ([fde_sub, fde_sub], [fde_sub], [])
     lfn = make_8dot3_name("This is a long filename.txt", fde)
     assert "THIS I~3.TXT" == lfn
