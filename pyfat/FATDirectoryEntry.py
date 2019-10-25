@@ -554,12 +554,13 @@ def is_8dot3_conform(entry_name: str):
         return False
 
     root, ext = os.path.splitext(entry_name)
+    ext = ext[1:]
     if len(root) > 8:
         return False
     if len(ext) > 3:
         return False
 
-    return False
+    return True
 
 
 def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
@@ -576,7 +577,7 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
     dir_name_modulus = len(dir_name) % lfn_entry_length
     lfn_dir_name = bytearray()
 
-    if is_8dot3_conform(dir_name):
+    if is_8dot3_conform(dir_name.decode(encoding)):
         raise PyFATException("Directory entry is already 8.3 conform, "
                              "no need to create an LFN entry.",
                              errno=errno.EINVAL)

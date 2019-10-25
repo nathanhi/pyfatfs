@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyfat.FATDirectoryEntry import FATDirectoryEntry
+from pyfat.FATDirectoryEntry import FATDirectoryEntry, is_8dot3_conform
 
 
 def test_invalid_dirname():
@@ -19,3 +19,13 @@ def test_invalid_dirname():
                           DIR_FstClusLO="0",
                           DIR_FileSize="0",
                           encoding="ibm437")
+
+
+def test_is_8dot3_conform_true():
+    """Test that 8.3 file names are correctly detected."""
+    assert is_8dot3_conform("TESTFILE.TXT")
+
+
+def test_is_8dot3_conform_false():
+    """Test that non-8.3 file names are correctly detected."""
+    assert not is_8dot3_conform("This is a Long file.txt")
