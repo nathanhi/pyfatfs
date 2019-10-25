@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
-"""fs.fat is a filesystem module for use with PyFilesystem2 for anyone
-who needs to access or modify files on a FAT filesystem."""
+"""
+FAT Filesystem Module for PyFilesystem2.
 
-from pyfat import PyFatFSOpener
+PyFAT is a filesystem module for use with PyFilesystem2 for anyone
+who needs to access or modify files on a FAT filesystem.
+"""
 
 __version__ = '0.0.0'
 __author__ = 'nathanhi'
