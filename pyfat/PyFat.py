@@ -243,6 +243,8 @@ class PyFat(object):
             curr += int(fat_entry_size)
             cluster += 1
 
+        assert None not in self.fat
+
     @_init_check
     def allocate_bytes(self, size: int):
         """Allocate cluster in FAT."""
