@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import errno
+
 import math
 import struct
 import warnings
@@ -137,15 +139,16 @@ class PyFat(object):
     def __seek(self, address: int):
         """Seek to given address with offset."""
         if self.__fp is None:
-            raise PyFATException("Cannot seek without a file handle!")
+            raise PyFATException("Cannot seek without a file handle!",
+                                 errno=errno.ENXIO)
         self.__fp.seek(address + self.__fp_offset)
 
     def open(self, filename):
         try:
             self.__set_fp(open(filename, 'rb'))
-        except OSError as e:
-            raise PyFATException("Cannot open given "
-                                 "file \'{}\' ({})".format(filename, e.errno))
+        except OSError as ex:
+            raise PyFATException(f"Cannot open given file \'{filename}\'.",
+                                 errno=ex.errno)
 
         # Parse BPB & FAT headers of given file
         self.parse_header()
@@ -466,6 +469,7 @@ class PyFat(object):
         self.initialised = False
 
     def __del__(self):
+        """Try to close open handles."""
         try:
             self.close()
         except PyFATException:

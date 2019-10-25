@@ -106,11 +106,11 @@ class FATDirectoryEntry(object):
     def add_parent(self, cls):
         if self._parent is not None:
             raise PyFATException("Trying to add multiple parents to current "
-                                 "directory!")
+                                 "directory!", errno=errno.ETOOMANYREFS)
 
         if not isinstance(cls, FATDirectoryEntry):
             raise PyFATException("Trying to add a non-FAT directory entry "
-                                 "as parent directory!")
+                                 "as parent directory!", errno=errno.EBADE)
 
         self._parent = cls
 
@@ -214,7 +214,8 @@ class FATDirectoryEntry(object):
         # Check if current dir entry is even a directory!
         if not self.is_directory():
             raise PyFATException("Cannot add subdirectory to "
-                                 "a non-directory entry!")
+                                 "a non-directory entry!",
+                                 errno=errno.ENOENT)
 
         dir_entry.add_parent(self)
         self.__dirs.add(dir_entry)
@@ -300,7 +301,8 @@ class FATLongDirectoryEntry(object):
         # Check if FstClusLO is 0, as required by the spec
         if LDIR_FstClusLO != 0:
             raise PyFATException("Given LFN entry has an invalid first "
-                                 "cluster ID, don't know what to do.")
+                                 "cluster ID, don't know what to do.",
+                                 errno=errno.EFAULT)
 
         # Check if item with same index has already been added
         if LDIR_Ord in self.lfn_entries.keys():
@@ -355,7 +357,9 @@ def make_8dot3_name(dir_name: str, dir_entry: FATDirectoryEntry):
             return short_name
         i += 1
 
-    raise PyFATException("Cannot generate 8dot3 filename, unable to find suiting short file name.")
+    raise PyFATException("Cannot generate 8dot3 filename, "
+                         "unable to find suiting short file name.",
+                         errno=errno.EEXIST)
 
 
 def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
@@ -366,7 +370,9 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
     lfn_dir_name = bytearray()
 
     if len(dir_name) > 255:
-        raise PyFATException("Long file name exceeds 255 characters, not supported.")
+        raise PyFATException("Long file name exceeds 255 "
+                             "characters, not supported.",
+                             errno=errno.ENAMETOOLONG)
 
     i = 0
     while i < len(dir_name):

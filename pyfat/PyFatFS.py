@@ -29,8 +29,10 @@ class PyFatFS(FS):
     def exists(self, path: str):
         try:
             self.fs.root_dir.get_entry(path)
-        except PyFATException:
-            return False
+        except PyFATException as e:
+            if e.errno == errno.ENOENT:
+                return False
+            raise e
 
         return True
 
@@ -128,7 +130,8 @@ class PyFatFS(FS):
             # Enhance chain if entries exhausted; FAT32 only
             if self.fs.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
                 raise PyFATException("Cannot create directory, maximum root "
-                                     "directory entries exhausted!")
+                                     "directory entries exhausted!",
+                                     errno=errno.ENOSPC)
 
             required_bytes = newdir.get_entry_size() - base_cluster_free
             new_chain = self.fs.allocate_bytes(required_bytes)[0]
