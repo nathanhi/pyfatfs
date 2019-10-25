@@ -529,7 +529,7 @@ def make_8dot3_name(dir_name: str, parent_dir_entry: FATDirectoryEntry):
     i = 0
     while len(str(i)) + 1 <= 7:
         if i > 0:
-            maxlen = 8-(len(str(i))+1)
+            maxlen = 8-(1+len(str(i)))
             basename = f"{basename[0:maxlen]}~{i}"
 
         short_name = f"{basename}{extsep}{extname}"
