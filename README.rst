@@ -1,9 +1,15 @@
 pyfat
 =====
 
-.. image:: https://img.shields.io/travis/nathanhi/pyfat/wip.svg?style=flat&maxAge=300
+.. image:: https://img.shields.io/travis/nathanhi/pyfat.svg?maxAge=2592000&style=flat-square&branch=wip
     :target: https://travis-ci.org/nathanhi/pyfat
-    :alt: ci build status
+    :alt: CI build status
+.. image:: https://img.shields.io/coveralls/nathanhi/pyfat.svg?maxAge=2592000&style=flat-square
+    :target: https://coveralls.io/github/nathanhi/pyfat
+    :alt: Test coverage overview
+.. image:: https://img.shields.io/github/license/nathanhi/pyfat.svg?maxAge=2592000&style=flat-square
+    :target: https://github.com/nathanhi/pyfat/blob/HEAD/LICENSE
+    :alt: MIT License
 
 pyfat is a filesystem module for use with PyFilesystem2 for anyone
 who needs to access or modify files on a FAT filesystem.
