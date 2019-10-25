@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+"""Directory entry operations with PyFAT."""
+import os
 import struct
 
 from pyfat._exceptions import PyFATException, NotAnLFNEntryException
@@ -8,18 +10,32 @@ import errno
 
 
 class FATDirectoryEntry(object):
-    ATTR_READ_ONLY = 0x01
-    ATTR_HIDDEN = 0x02
-    ATTR_SYSTEM = 0x04
-    ATTR_VOLUME_ID = 0x8
-    ATTR_DIRECTORY = 0x10
-    ATTR_ARCHIVE = 0x20
-    ATTR_LONG_NAME = ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID
-    ATTR_LONG_NAME_MASK = ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | \
-                          ATTR_VOLUME_ID | ATTR_DIRECTORY | ATTR_ARCHIVE
+    """Represents directory entries in FAT (files & directories)."""
 
+    #: Bit set in DIR_Attr if entry is read-only
+    ATTR_READ_ONLY = 0x01
+    #: Bit set in DIR_Attr if entry is hidden
+    ATTR_HIDDEN = 0x02
+    #: Bit set in DIR_Attr if entry is a system file
+    ATTR_SYSTEM = 0x04
+    #: Bit set in DIR_Attr if entry is a volume id descriptor
+    ATTR_VOLUME_ID = 0x8
+    #: Bit set in DIR_Attr if entry is a directory
+    ATTR_DIRECTORY = 0x10
+    #: Bit set in DIR_Attr if entry is an archive
+    ATTR_ARCHIVE = 0x20
+    #: Bits set in DIR_Attr if entry is an LFN entry
+    ATTR_LONG_NAME = ATTR_READ_ONLY | ATTR_HIDDEN | \
+        ATTR_SYSTEM | ATTR_VOLUME_ID
+    #: Bitmask to check if entry is an LFN entry
+    ATTR_LONG_NAME_MASK = ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | \
+        ATTR_VOLUME_ID | ATTR_DIRECTORY | ATTR_ARCHIVE
+
+    #: Directory entry header layout in struct formatted string
     FAT_DIRECTORY_LAYOUT = "<11sBHHHHHHHHL"
+    #: Size of a directory entry header in bytes
     FAT_DIRECTORY_HEADER_SIZE = struct.calcsize(FAT_DIRECTORY_LAYOUT)
+    #: Directory entry headers
     FAT_DIRECTORY_VARS = ["DIR_Name", "DIR_Attr", "DIR_NTRes",
                           "DIR_CrtTimeTenth", "DIR_CrtDateTenth",
                           "DIR_LstAccessDate", "DIR_FstClusHI",
@@ -30,6 +46,22 @@ class FATDirectoryEntry(object):
                  DIR_CrtDateTenth, DIR_LstAccessDate, DIR_FstClusHI,
                  DIR_WrtTime, DIR_WrtDate, DIR_FstClusLO, DIR_FileSize,
                  encoding, lfn_entry=None):
+        """FAT directory entry constructor.
+
+        :param DIR_Name: Directory name can either be string or byte string
+        :param DIR_Attr: Attributes of directory
+        :param DIR_NTRes: Reserved attributes of directory entry
+        :param DIR_CrtTimeTenth: Creation timestamp of entry
+        :param DIR_CrtDateTenth: Creation date of entry
+        :param DIR_LstAccessDate: Last access date of entry
+        :param DIR_FstClusHI: High cluster value of entry data
+        :param DIR_WrtTime: Modification timestamp of entry
+        :param DIR_WrtDate: Modification date of entry
+        :param DIR_FstClusLO: Low cluster value of entry data
+        :param DIR_FileSize: File size in bytes
+        :param encoding: Encoding of filename
+        :param lfn_entry: FATLongDirectoryEntry instance or None
+        """
         if len(DIR_Name) > 0:
             if DIR_Name[0] == 0x0 or DIR_Name[0] == 0xE5:
                 # Empty directory entry
@@ -64,14 +96,20 @@ class FATDirectoryEntry(object):
         self.__encoding = encoding
 
     def get_entry_size(self):
-        """Return size of directory entry."""
+        """Get size of directory entry.
+
+        :returns: Entry size in bytes as int
+        """
         sz = self.FAT_DIRECTORY_HEADER_SIZE
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
             sz *= len(self.lfn_entry.lfn_entries)
         return sz
 
     def get_size(self):
-        """Return filesize or directory entry size in bytes."""
+        """Get filesize or directory entry size.
+
+        :returns: Filesize or directory entry size in bytes as int
+        """
         if self.is_directory():
             sz = self.FAT_DIRECTORY_HEADER_SIZE
             sz *= len(self.__dirs)+1
@@ -80,30 +118,43 @@ class FATDirectoryEntry(object):
         return self.filesize
 
     def get_cluster(self):
-        """Return cluster address of directory entry."""
+        """Get cluster address of directory entry.
+
+        :returns: Cluster address of entry
+        """
         return self.fstcluslo + (self.fstclushi << 16)
 
     def set_cluster(self, first_cluster):
-        """Convert first_cluster to low and high word and set headers."""
+        """Set low and high cluster address in directory headers."""
         self.fstcluslo = (first_cluster >> (16 * 0) & 0xFFFF)
         self.fstclushi = (first_cluster >> (16 * 1) & 0xFFFF)
 
     def byte_repr(self):
+        """Represent directory entry as bytes.
+
+        Note: Also represents accompanying LFN entries
+
+        :returns: Entry & LFN entry as bytes-object
+        """
         name = self.name
         if name[0] == 0xE5:
             name[0] = 0x05
 
-        entry = struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr, self.ntres,
-                            self.crttimetenth, self.crtdatetenth, self.lstaccessdate,
-                            self.fstclushi, self.wrttime, self.wrtdate, self.fstcluslo,
-                            self.filesize)
+        entry = struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr,
+                            self.ntres, self.crttimetenth, self.crtdatetenth,
+                            self.lstaccessdate, self.fstclushi, self.wrttime,
+                            self.wrtdate, self.fstcluslo, self.filesize)
 
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
             entry += self.lfn_entry.byte_repr()
 
         return entry
 
-    def add_parent(self, cls):
+    def _add_parent(self, cls):
+        """Add parent directory link to current directory entry.
+
+        raises: PyFATException
+        """
         if self._parent is not None:
             raise PyFATException("Trying to add multiple parents to current "
                                  "directory!", errno=errno.ETOOMANYREFS)
@@ -115,6 +166,7 @@ class FATDirectoryEntry(object):
         self._parent = cls
 
     def _get_parent_dir(self, sd):
+        """Build path name for recursive directory entries."""
         name = self.__repr__()
         if self.__repr__() == "/":
             name = ""
@@ -132,33 +184,81 @@ class FATDirectoryEntry(object):
         if self._parent is None:
             return "/".join(list(reversed(parent_dirs)))
 
-        return "/".join(list(reversed(self._parent._get_parent_dir(parent_dirs))))
+        return "/".join(list(reversed(
+            self._parent._get_parent_dir(parent_dirs))))
 
     def is_special(self):
+        """Determine if dir entry is a dot or dotdot entry.
+
+        :returns: Boolean value whether or not entry is
+                  a dot or dotdot entry
+        """
         return self.get_short_name() in [".", ".."]
 
     def is_read_only(self):
+        """Determine if dir entry has read-only attribute set.
+
+        :returns: Boolean value indicating read-only attribute is set
+        """
         return (self.ATTR_READ_ONLY & self.attr) > 0
 
     def is_hidden(self):
+        """Determine if dir entry has the hidden attribute set.
+
+        :returns: Boolean value indicating hidden attribute is set
+        """
         return (self.ATTR_HIDDEN & self.attr) > 0
 
     def is_system(self):
+        """Determine if dir entry has the system file attribute set.
+
+        :returns: Boolean value indicating system attribute is set
+        """
         return (self.ATTR_SYSTEM & self.attr) > 0
 
     def is_volume_id(self):
+        """Determine if dir entry has the volume ID attribute set.
+
+        :returns: Boolean value indicating volume ID attribute is set
+        """
         return (self.ATTR_VOLUME_ID & self.attr) > 0
 
+    def _verify_is_directory(self):
+        """Verify that current entry is a directory.
+
+        raises: PyFATException: If current entry is not a directory.
+        """
+        if not self.is_directory():
+            raise PyFATException("Cannot get entries of this entry, as "
+                                 "it is not a directory.",
+                                 errno=errno.ENOTDIR)
+
     def is_directory(self):
+        """Determine if dir entry has directory attribute set.
+
+        :returns: Boolean value indicating directory attribute is set
+        """
         return (self.ATTR_DIRECTORY & self.attr) > 0
 
     def is_archive(self):
+        """Determine if dir entry has archive attribute set.
+
+        :returns: Boolean value indicating archive attribute is set
+        """
         return (self.ATTR_ARCHIVE & self.attr) > 0
 
     def get_entries(self):
+        """Get entries of directory.
+
+        :raises: PyFatException: If entry is not a directory
+        :returns: tuple: root (current path, full),
+                 dirs (all dirs), files (all files)
+        """
         dirs = []
         files = []
         specials = []
+
+        self._verify_is_directory()
 
         for d in self.__dirs:
             if d.is_special() or d.is_volume_id():
@@ -173,8 +273,13 @@ class FATDirectoryEntry(object):
 
         return dirs, files, specials
 
-    def _search_entry(self, name):
-        # Find given dir entry by walking current dir
+    def _search_entry(self, name: str):
+        """Find given dir entry by walking current dir.
+
+        :param name: Name of entry to search for
+        :raises: PyFATException: If entry cannot be found
+        :returns: FATDirectoryEntry: Found entry
+        """
         dirs, files, specials = self.get_entries()
         for entry in dirs+files:
             try:
@@ -185,17 +290,28 @@ class FATDirectoryEntry(object):
             if entry.get_short_name() == name:
                 return entry
         else:
-            raise PyFATException(f'Cannot find entry {name}', errno=errno.ENOENT)
+            raise PyFATException(f'Cannot find entry {name}',
+                                 errno=errno.ENOENT)
 
-    def get_entry(self, path):
+    def get_entry(self, path: str):
+        """Get sub-entry if current entry is a directory.
+
+        :param path: Relative path of entry to get
+        :raises: PyFATException: If entry cannot be found
+        :returns: FATDirectoryEntry: Found entry
+        """
         entry = self
         for segment in filter(None, path.split("/")):
+            entry._verify_is_directory()
             entry = entry._search_entry(segment)
         return entry
 
     def walk(self):
-        # Walk all directory entries recursively
-        # root (current path, full), dirs (all dirs), files (all files)
+        """Walk all directory entries recursively.
+
+        :returns: tuple: root (current path, full),
+                         dirs (all dirs), files (all files)
+        """
         root = self.get_parent_dir()
         dirs, files, _ = self.get_entries()
 
@@ -210,23 +326,35 @@ class FATDirectoryEntry(object):
 
             yield from d.walk()
 
-    def add_subdirectory(self, dir_entry=None):
-        # Check if current dir entry is even a directory!
-        if not self.is_directory():
-            raise PyFATException("Cannot add subdirectory to "
-                                 "a non-directory entry!",
-                                 errno=errno.ENOENT)
+    def add_subdirectory(self, dir_entry):
+        """Register a subdirectory in current directory entry.
 
-        dir_entry.add_parent(self)
+        :param dir_entry: FATDirectoryEntry
+        :raises: PyFATException: If current entry is not a directory or
+                                 given directory entry already has a parent
+                                 directory set
+        """
+        # Check if current dir entry is even a directory!
+        self._verify_is_directory()
+
+        dir_entry._add_parent(self)
         self.__dirs.add(dir_entry)
 
     def __repr__(self):
+        """String-represent directory entry by (preferrably) LFN.
+
+        :returns: str: Long file name if existing, 8DOT3 otherwise
+        """
         try:
             return self.get_long_name()
         except NotAnLFNEntryException:
             return self.get_short_name()
 
     def get_short_name(self):
+        """Get short name of directory entry.
+
+        :returns: str: Name of directory entry
+        """
         n = self.name.decode(self.__encoding)
 
         sep = "."
@@ -241,13 +369,12 @@ class FATDirectoryEntry(object):
         else:
             return sep.join([name, ext])
 
-    def _remove_padding(self, entry: bytes):
-        while entry.endswith(b'\xFF\xFF'):
-            entry = entry[:-2]
-        entry = entry.replace(b'\x00', b'')
-        return entry
-
     def get_long_name(self):
+        """Get long name of directory entry.
+
+        :raises: NotAnLFNEntryException: If entry has no long file name
+        :returns: str: Long file name of directory entry
+        """
         if self.lfn_entry is None:
             raise NotAnLFNEntryException("No LFN entry found for this "
                                          "dir entry.")
@@ -256,22 +383,30 @@ class FATDirectoryEntry(object):
         for i in sorted(self.lfn_entry.lfn_entries.keys()):
             # TODO: Verify checksum!
             for h in ["LDIR_Name1", "LDIR_Name2", "LDIR_Name3"]:
-                name += self._remove_padding(self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding)
+                name += FATLongDirectoryEntry._remove_padding(
+                    self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding)
 
         return name.strip()
 
 
 class FATLongDirectoryEntry(object):
+    """Represents long file name (LFN) entries."""
+
+    #: LFN entry header layout in struct formatted string
     FAT_LONG_DIRECTORY_LAYOUT = "<B10sBBB12sH4s"
+    #: LFN header fields when extracted with `FAT_LONG_DIRECTORY_LAYOUT`
     FAT_LONG_DIRECTORY_VARS = ["LDIR_Ord", "LDIR_Name1", "LDIR_Attr",
                                "LDIR_Type", "LDIR_Chksum", "LDIR_Name2",
                                "LDIR_FstClusLO", "LDIR_Name3"]
+    #: Ordinance of last LFN entry in a chain
     LAST_LONG_ENTRY = 0x40
 
     def __init__(self):
+        """Initialize empty LFN directory entry object."""
         self.lfn_entries = {}
 
     def byte_repr(self):
+        """Represent LFN entries as bytes."""
         entries_bytes = b""
         for e in self.lfn_entries.keys():
             e = self.lfn_entries[e]
@@ -283,7 +418,24 @@ class FATLongDirectoryEntry(object):
         return entries_bytes
 
     @staticmethod
+    def _remove_padding(entry: bytes):
+        """Remove padding from given LFN entry.
+
+        :param entry: LDIR_Name* entry
+        """
+        while entry.endswith(b'\xFF\xFF'):
+            entry = entry[:-2]
+        entry = entry.replace(b'\x00', b'')
+        return entry
+
+    @staticmethod
     def is_lfn_entry(LDIR_Ord, LDIR_Attr):
+        """Verify that entry is an LFN entry.
+
+        :param LDIR_Ord: First byte of the directory header, ordinance
+        :param LDIR_Attr: Attributes segment of directory header
+        :returns: `True` if entry is a valid LFN entry
+        """
         lfn_attr = FATDirectoryEntry.ATTR_LONG_NAME
         lfn_attr_mask = FATDirectoryEntry.ATTR_LONG_NAME_MASK
         is_attr_set = (LDIR_Attr & lfn_attr_mask) == lfn_attr
@@ -292,6 +444,17 @@ class FATLongDirectoryEntry(object):
 
     def add_lfn_entry(self, LDIR_Ord, LDIR_Name1, LDIR_Attr, LDIR_Type,
                       LDIR_Chksum, LDIR_Name2, LDIR_FstClusLO, LDIR_Name3):
+        """Add LFN entry to this instances chain.
+
+        :param LDIR_Ord: Ordinance of LFN entry
+        :param LDIR_Name1: First name field of LFN entry
+        :param LDIR_Attr: Attributes of LFN entry
+        :param LDIR_Type: Type of LFN entry
+        :param LDIR_Chksum: Checksum value of following 8dot3 entry
+        :param LDIR_Name2: Second name field of LFN entry
+        :param LDIR_FstClusLO: Cluster address of LFN entry. Always zero.
+        :param LDIR_Name3: Third name field of LFN entry
+        """
         # Check if attribute matches
         if not self.is_lfn_entry(LDIR_Ord, LDIR_Attr):
             raise NotAnLFNEntryException("Given LFN entry is not a long "
@@ -319,6 +482,10 @@ class FATLongDirectoryEntry(object):
         self.lfn_entries[LDIR_Ord] = mapped_entries
 
     def is_lfn_entry_complete(self):
+        """Verify that LFN object forms a complete chain.
+
+        :returns: `True` if `LAST_LONG_ENTRY` is found
+        """
         for k in self.lfn_entries.keys():
             if (int(k) & self.LAST_LONG_ENTRY) == self.LAST_LONG_ENTRY:
                 return True
@@ -326,8 +493,22 @@ class FATLongDirectoryEntry(object):
         return False
 
 
-def make_8dot3_name(dir_name: str, dir_entry: FATDirectoryEntry):
-    dirs, files, _ = dir_entry.get_entries()
+def make_8dot3_name(dir_name: str, parent_dir_entry: FATDirectoryEntry):
+    """Generate filename based on 8.3 rules out of a long file name.
+
+    In 8.3 notation we try to use the first 6 characters and
+    fill the rest with a tilde, followed by a number (starting
+    at 1). If that entry is already given, we increment this
+    number and try again until all possibilities are exhausted
+    (i.e. A~999999.TXT).
+
+    :param dir_name: Long name of directory entry
+    :param parent_dir_entry: Directory entry of parent dir.
+    :raises: PyFATException: If parent dir is not a directory
+                             or all name generation possibilities
+                             are exhausted
+    """
+    dirs, files, _ = parent_dir_entry.get_entries()
     dir_entries = [e.get_short_name() for e in dirs+files]
 
     extsep = "."
@@ -362,12 +543,43 @@ def make_8dot3_name(dir_name: str, dir_entry: FATDirectoryEntry):
                          errno=errno.EEXIST)
 
 
+def is_8dot3_conform(entry_name: str):
+    """Indicate conformance of given entries name to 8.3 standard.
+
+    :param entry_name: Name of entry to check
+    :returns: bool indicating conformance of name to 8.3 standard
+    """
+    if entry_name != entry_name.upper():
+        # Case sensitivity check
+        return False
+
+    root, ext = os.path.splitext(entry_name)
+    if len(root) > 8:
+        return False
+    if len(ext) > 3:
+        return False
+
+    return False
+
+
 def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
+    """Generate a `FATLongDirectoryEntry` instance from directory name.
+
+    :param dir_name: Long name of directory
+    :param encoding: Encoding of file name
+    :raises PyFATException if entry name does not require an LFN
+            entry or the name exceeds the FAT limitation of 255 characters
+    """
     lfn_entry = FATLongDirectoryEntry()
     lfn_entry_length = 13
     dir_name = bytearray(dir_name.encode(encoding))
     dir_name_modulus = len(dir_name) % lfn_entry_length
     lfn_dir_name = bytearray()
+
+    if is_8dot3_conform(dir_name):
+        raise PyFATException("Directory entry is already 8.3 conform, "
+                             "no need to create an LFN entry.",
+                             errno=errno.EINVAL)
 
     if len(dir_name) > 255:
         raise PyFATException("Long file name exceeds 255 "

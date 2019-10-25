@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import errno
-import sys
 
 from fs.base import FS
 from fs.permissions import Permissions
