@@ -555,9 +555,11 @@ def is_8dot3_conform(entry_name: str):
 
     root, ext = os.path.splitext(entry_name)
     ext = ext[1:]
-    if len(root) > 8:
+    if len(root) > 8 and len(ext) > 0:
         return False
-    if len(ext) > 3:
+    elif len(ext) == 0 and len(root) > 11:
+        return False
+    elif len(ext) > 3:
         return False
 
     return True

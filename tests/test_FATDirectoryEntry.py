@@ -83,3 +83,13 @@ def test_is_8dot3_conform_true():
 def test_is_8dot3_conform_false():
     """Test that non-8.3 file names are correctly detected."""
     assert not is_8dot3_conform("This is a Long file.txt")
+
+
+def test_is_8dot3_conform_noext_true():
+    """Test that 8.3 file names without extension are correctly detected."""
+    assert is_8dot3_conform("88888888333")
+
+
+def test_is_8dot3_conform_noext_false():
+    """Test that 8.3 file names without extension are correctly detected."""
+    assert not is_8dot3_conform("88888888333_")
