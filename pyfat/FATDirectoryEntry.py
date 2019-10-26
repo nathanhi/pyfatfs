@@ -286,7 +286,7 @@ class FATDirectoryEntry(object):
         :raises: PyFATException: If entry cannot be found
         :returns: FATDirectoryEntry: Found entry
         """
-        dirs, files, specials = self.get_entries()
+        dirs, files, _ = self.get_entries()
         for entry in dirs+files:
             try:
                 if entry.get_long_name() == name:
@@ -295,9 +295,9 @@ class FATDirectoryEntry(object):
                 pass
             if entry.get_short_name() == name:
                 return entry
-        else:
-            raise PyFATException(f'Cannot find entry {name}',
-                                 errno=errno.ENOENT)
+
+        raise PyFATException(f'Cannot find entry {name}',
+                             errno=errno.ENOENT)
 
     def get_entry(self, path: str):
         """Get sub-entry if current entry is a directory.

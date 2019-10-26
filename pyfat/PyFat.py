@@ -246,7 +246,9 @@ class PyFat(object):
             curr += int(fat_entry_size)
             cluster += 1
 
-        assert None not in self.fat
+        if None in self.fat:
+            raise AssertionError("Unknown error during FAT parsing, please "
+                                 "report this error.")
 
     @_init_check
     def allocate_bytes(self, size: int):
@@ -257,7 +259,8 @@ class PyFat(object):
 
         # Fill list of found free clusters
         free_clusters = []
-        for i in range(0, len(self.fat)):
+        for i in enumerate(self.fat):
+            i = i[1]
             if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] > i > self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
                 # Ignore out of bound entries
                 continue
