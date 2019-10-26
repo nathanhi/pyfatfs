@@ -11,8 +11,8 @@ install:
   - pip install -e .
 
 script:
+  - flake8 pyfat tests
   - py.test --cov=pyfat tests
 
 after_success:
   - coveralls
-  - python-codacy-coverage -r coverage.xml
