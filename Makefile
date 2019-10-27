@@ -8,6 +8,7 @@ endif
 # Generate virtualenv
 $(VENV_DIR)/install.indicator: requirements
 	$(VENV_DIR)/bin/pip install -r requirements/development.txt
+	$(VENV_DIR)/bin/pip install -e .
 	touch $@
 
 $(VENV_DIR):
