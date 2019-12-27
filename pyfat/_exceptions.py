@@ -20,3 +20,9 @@ class NotAnLFNEntryException(PyFATException):
     """Indicates that given dir entry cannot be interpreted as LFN entry."""
 
     pass
+
+
+class BrokenLFNEntryException(PyFATException):
+    """Indicates that given LFN entry is invalid."""
+
+    pass

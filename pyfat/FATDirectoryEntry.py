@@ -4,7 +4,8 @@
 import os
 import struct
 
-from pyfat._exceptions import PyFATException, NotAnLFNEntryException
+from pyfat._exceptions import PyFATException, NotAnLFNEntryException,\
+    BrokenLFNEntryException
 
 import errno
 
@@ -90,7 +91,9 @@ class FATDirectoryEntry(object):
 
         self._parent = None
 
-        self.lfn_entry = lfn_entry
+        # Handle LFN entries
+        self.lfn_entry = None
+        self.set_lfn_entry(lfn_entry)
 
         self.__dirs = set()
         self.__encoding = encoding
@@ -100,6 +103,34 @@ class FATDirectoryEntry(object):
                                  f"{self.get_short_name()} is not conform "
                                  f"to 8.3 file naming convention.",
                                  errno=errno.EINVAL)
+
+    def calculate_checksum(self) -> int:
+        """Calculate checksum of short directory entry.
+
+        :returns: Checksum as int
+        """
+        chksum = 0
+        for c in self.name:
+            chksum = ((chksum >> 1) | (chksum & 1) << 7) + c
+            chksum &= 0xFF
+        return chksum
+
+    def set_lfn_entry(self, lfn_entry):
+        """Set LFN entry for current directory entry.
+
+        :param: lfn_entry: Can be either of type `FATLongDirectoryEntry`
+                or `None`.
+        """
+        if not isinstance(lfn_entry, FATLongDirectoryEntry):
+            return
+
+        # Verify LFN entries checksums
+        chksum = self.calculate_checksum()
+        for entry in lfn_entry.lfn_entries:
+            entry_chksum = lfn_entry.lfn_entries[entry]["LDIR_Chksum"]
+            if entry_chksum != chksum:
+                raise BrokenLFNEntryException()
+        self.lfn_entry = lfn_entry
 
     def get_entry_size(self):
         """Get size of directory entry.
@@ -387,7 +418,6 @@ class FATDirectoryEntry(object):
 
         name = ""
         for i in sorted(self.lfn_entry.lfn_entries.keys()):
-            # TODO: Verify checksum!
             for h in ["LDIR_Name1", "LDIR_Name2", "LDIR_Name3"]:
                 name += FATLongDirectoryEntry._remove_padding(
                     self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding)
@@ -479,12 +509,11 @@ class FATLongDirectoryEntry(object):
                                  "has already been added to LFN "
                                  "entry list.".format(LDIR_Ord))
 
-        # TODO: Verify checksum
-
         mapped_entries = dict(zip(self.FAT_LONG_DIRECTORY_VARS,
                                   (LDIR_Ord, LDIR_Name1, LDIR_Attr, LDIR_Type,
                                    LDIR_Chksum, LDIR_Name2, LDIR_FstClusLO,
                                    LDIR_Name3)))
+
         self.lfn_entries[LDIR_Ord] = mapped_entries
 
     def is_lfn_entry_complete(self):
