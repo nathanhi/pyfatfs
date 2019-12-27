@@ -33,7 +33,12 @@ class PyFatFS(FS):
 
     def close(self):
         """Clean up open handles."""
-        self.fs.close()
+        try:
+            self.fs.close()
+        except PyFATException:
+            # Ignore if filesystem is already closed
+            pass
+
         super(PyFatFS, self).close()
 
     def exists(self, path: str):
