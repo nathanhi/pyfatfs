@@ -546,12 +546,20 @@ class PyFat(object):
             self.__parse_fat12_header()
 
             self.__verify_fat12_header()
-        else:
+        elif self.fat_type == self.FAT_TYPE_FAT32:
             # FAT32, probably - probe for it
-            # TODO: Verify that BPB_FATSz16 is 0
+            if self.bpb_header["BPB_FATSz16"] != 0:
+                raise PyFATException(f"Invalid BPB_FATSz16 value of "
+                                     f"'{self.bpb_header['BPB_FATSz16']}', "
+                                     f"filesystem corrupt?",
+                                     errno=errno.EINVAL)
+
             self.__parse_fat32_header()
 
             # TODO: Verify FAT32 header
+        else:
+            raise PyFATException("Unknown FAT filesystem type, "
+                                 "filesystem corrupt?", errno=errno.EINVAL)
 
         # Check signature
         self.__seek(510)
