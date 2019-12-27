@@ -140,9 +140,10 @@ class PyFatFS(FS):
             raise DirectoryExists(path)
 
         # Determine file name + LFN
-        short_name = make_8dot3_name(dirname, base)
+        short_name = make_8dot3_name(dirname, base).encode(self.fs.encoding)
         if short_name != dirname:
-            lfn_entry = make_lfn_entry(dirname, encoding=self.fs.encoding)
+            lfn_entry = make_lfn_entry(dirname, short_name,
+                                       encoding=self.fs.encoding)
         else:
             lfn_entry = None
 

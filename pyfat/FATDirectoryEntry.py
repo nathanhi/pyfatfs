@@ -104,16 +104,12 @@ class FATDirectoryEntry(object):
                                  f"to 8.3 file naming convention.",
                                  errno=errno.EINVAL)
 
-    def calculate_checksum(self) -> int:
-        """Calculate checksum of short directory entry.
+    def get_checksum(self) -> int:
+        """Get calculated checksum of this directory entry.
 
         :returns: Checksum as int
         """
-        chksum = 0
-        for c in self.name:
-            chksum = ((chksum >> 1) | (chksum & 1) << 7) + c
-            chksum &= 0xFF
-        return chksum
+        return calculate_checksum(self.name)
 
     def set_lfn_entry(self, lfn_entry):
         """Set LFN entry for current directory entry.
@@ -125,11 +121,11 @@ class FATDirectoryEntry(object):
             return
 
         # Verify LFN entries checksums
-        chksum = self.calculate_checksum()
+        chksum = self.get_checksum()
         for entry in lfn_entry.lfn_entries:
             entry_chksum = lfn_entry.lfn_entries[entry]["LDIR_Chksum"]
             if entry_chksum != chksum:
-                raise BrokenLFNEntryException()
+                raise BrokenLFNEntryException
         self.lfn_entry = lfn_entry
 
     def get_entry_size(self):
@@ -528,6 +524,19 @@ class FATLongDirectoryEntry(object):
         return False
 
 
+def calculate_checksum(filename: bytes) -> int:
+    """Calculate checksum of byte string.
+
+    :param filename: Filename to calculate checksum of
+    :returns: Checksum as int
+    """
+    chksum = 0
+    for c in filename:
+        chksum = ((chksum >> 1) | (chksum & 1) << 7) + c
+        chksum &= 0xFF
+    return chksum
+
+
 def make_8dot3_name(dir_name: str, parent_dir_entry: FATDirectoryEntry):
     """Generate filename based on 8.3 rules out of a long file name.
 
@@ -600,10 +609,11 @@ def is_8dot3_conform(entry_name: str):
     return True
 
 
-def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
+def make_lfn_entry(dir_name: str, short_name: bytes, encoding: str = 'ibm437'):
     """Generate a `FATLongDirectoryEntry` instance from directory name.
 
     :param dir_name: Long name of directory
+    :param short_name: Short file name accompanying the LFN entry
     :param encoding: Encoding of file name
     :raises PyFATException if entry name does not require an LFN
             entry or the name exceeds the FAT limitation of 255 characters
@@ -623,6 +633,8 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
         raise PyFATException("Long file name exceeds 255 "
                              "characters, not supported.",
                              errno=errno.ENAMETOOLONG)
+
+    checksum = calculate_checksum(short_name)
 
     i = 0
     while i < len(dir_name):
@@ -651,12 +663,12 @@ def make_lfn_entry(dir_name: str, encoding: str = 'ibm437'):
         dirname2 = lfn_dir_name[n:n+12]
         n += 12
         dirname3 = lfn_dir_name[n:n+4]
-        # TODO: Generate checksum
+
         lfn_entry.add_lfn_entry(LDIR_Ord=lfn_entry_ord,
                                 LDIR_Name1=dirname1,
                                 LDIR_Attr=FATDirectoryEntry.ATTR_LONG_NAME,
                                 LDIR_Type=0x00,
-                                LDIR_Chksum=0x00,
+                                LDIR_Chksum=checksum,
                                 LDIR_Name2=dirname2,
                                 LDIR_FstClusLO=0,
                                 LDIR_Name3=dirname3)

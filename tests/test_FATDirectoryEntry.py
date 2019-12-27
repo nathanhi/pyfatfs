@@ -7,8 +7,8 @@ from unittest import mock
 
 import pytest
 
-from pyfat.FATDirectoryEntry import FATDirectoryEntry, is_8dot3_conform,\
-    make_8dot3_name
+from pyfat.FATDirectoryEntry import FATDirectoryEntry, is_8dot3_conform, \
+    make_8dot3_name, calculate_checksum
 
 
 def test_invalid_dirname():
@@ -30,19 +30,7 @@ def test_invalid_dirname():
 
 def test_checksum_calculation_precalculated():
     """Test that the checksum calculation works, with a precalculated value."""
-    fde = FATDirectoryEntry(DIR_Name=b'FILENAMETXT',
-                            DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                            DIR_NTRes="0",
-                            DIR_CrtTimeTenth="0",
-                            DIR_CrtDateTenth="0",
-                            DIR_LstAccessDate="0",
-                            DIR_FstClusHI="0",
-                            DIR_WrtTime="0",
-                            DIR_WrtDate="0",
-                            DIR_FstClusLO="0",
-                            DIR_FileSize="0",
-                            encoding="ibm437")
-    assert fde.calculate_checksum() == 58
+    assert calculate_checksum(b'FILENAMETXT') == 58
 
 
 def test_checksum_calculation_referenceimpl():
@@ -62,25 +50,13 @@ def test_checksum_calculation_referenceimpl():
 
     """
     fname = b'FILENAMETXT'
-    fde = FATDirectoryEntry(DIR_Name=fname,
-                            DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                            DIR_NTRes="0",
-                            DIR_CrtTimeTenth="0",
-                            DIR_CrtDateTenth="0",
-                            DIR_LstAccessDate="0",
-                            DIR_FstClusHI="0",
-                            DIR_WrtTime="0",
-                            DIR_WrtDate="0",
-                            DIR_FstClusLO="0",
-                            DIR_FileSize="0",
-                            encoding="ibm437")
 
     s = 0
     for i in range(0, 11):
         s = (0x80 if (s & 1) == 1 else 0x0) + (s >> 1) + fname[i]
         s &= 0xFF
 
-    assert fde.calculate_checksum() == s
+    assert calculate_checksum(fname) == s
 
 
 def test_checksum_calculation_referenceimpl_random():
@@ -101,25 +77,13 @@ def test_checksum_calculation_referenceimpl_random():
     """
     fname = ''.join(random.choices(string.ascii_letters + string.digits,
                                    k=11)).upper().encode('ASCII')
-    fde = FATDirectoryEntry(DIR_Name=fname,
-                            DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                            DIR_NTRes="0",
-                            DIR_CrtTimeTenth="0",
-                            DIR_CrtDateTenth="0",
-                            DIR_LstAccessDate="0",
-                            DIR_FstClusHI="0",
-                            DIR_WrtTime="0",
-                            DIR_WrtDate="0",
-                            DIR_FstClusLO="0",
-                            DIR_FileSize="0",
-                            encoding="ibm437")
 
     s = 0
     for i in range(0, 11):
         s = (0x80 if (s & 1) == 1 else 0x0) + (s >> 1) + fname[i]
         s &= 0xFF
 
-    assert fde.calculate_checksum() == s
+    assert calculate_checksum(fname) == s
 
 
 def test_make_8dot3_name():
