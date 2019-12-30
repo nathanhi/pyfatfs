@@ -151,12 +151,15 @@ class PyFatFS(FS):
         except DirectoryExpected:
             raise ResourceNotFound(path)
 
-        dirs, files, _ = base.get_entries()
-        if dirname.upper() in [str(e).upper() for e in dirs+files]:
+        try:
+            self._get_dir_entry(path)
+        except ResourceNotFound:
+            pass
+        else:
             raise DirectoryExists(path)
 
         # Determine file name + LFN
-        short_name = make_8dot3_name(dirname, base).encode(self.fs.encoding)
+        short_name = make_8dot3_name(dirname, base)
         if short_name != dirname:
             lfn_entry = make_lfn_entry(dirname, short_name,
                                        encoding=self.fs.encoding)
