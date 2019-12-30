@@ -144,6 +144,17 @@ class PyFat(object):
                                  errno=errno.ENXIO)
         self.__fp.seek(address + self.__fp_offset)
 
+    def read_cluster_contents(self, cluster: int) -> bytes:
+        """Read contents of given cluster.
+
+        :param cluster: Cluster number to read contents from
+        :returns: Contents of cluster as `bytes`
+        """
+        sz = self.bytes_per_cluster
+        cluster_address = self.get_cluster_address(cluster)
+        self.__seek(cluster_address)
+        return self.__fp.read(sz)
+
     def open(self, filename: str, read_only: bool = False):
         """Open filesystem for usage with PyFat.
 
