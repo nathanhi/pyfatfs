@@ -16,7 +16,7 @@ class PyFatFSOpener(Opener):
     protocols = ['fat']
 
     def open_fs(self, fs_url: str, parse_result: ParseResult,
-                create: bool, cwd: str, writeable: bool = True):
+                create: bool, cwd: str, writeable: bool = True):  # pylint: disable=R0201
         """Handle PyFilesystem2's protocol opening interface."""
         fs = PyFatFS(filename=parse_result.resource, **parse_result.params)
         return fs
