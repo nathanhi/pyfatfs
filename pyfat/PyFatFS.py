@@ -7,14 +7,15 @@ import errno
 from fs.base import FS
 from fs.permissions import Permissions
 from fs.info import Info
-from fs.errors import DirectoryExpected, DirectoryExists, ResourceNotFound, FileExpected
+from fs.errors import DirectoryExpected, DirectoryExists,\
+    ResourceNotFound, FileExpected
 from fs import ResourceType
 
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_8dot3_name,\
     make_lfn_entry
 from pyfat.PyFat import PyFat
 from pyfat._exceptions import PyFATException
-from pyfat.file import FatFile
+from pyfat.FatIO import FatIO
 
 
 class PyFatFS(FS):
@@ -258,7 +259,7 @@ class PyFatFS(FS):
             if info.is_dir:
                 raise FileExpected(path)
 
-        return FatFile(self.fs, path, mode)
+        return FatIO(self.fs, path, mode)
 
     def _get_dir_entry(self, path: str) -> FATDirectoryEntry:
         """Get a filesystem object for a path.

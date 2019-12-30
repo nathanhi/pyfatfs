@@ -8,7 +8,6 @@ import threading
 import warnings
 
 from contextlib import contextmanager
-from os import PathLike
 from io import BufferedReader, open
 
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
@@ -30,8 +29,7 @@ def _init_check(func):
 
 
 class PyFat(object):
-    """ PyFAT base class, parses generic filesystem information.
-    """
+    """PyFAT base class, parses generic filesystem information."""
     #: Used as fat_type if unable to detect FAT type
     FAT_TYPE_UNKNOWN = 0
     #: Used as fat_type if FAT12 fs has been detected

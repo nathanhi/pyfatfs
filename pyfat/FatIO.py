@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Implementation of `FatFile` for basic I/O."""
+"""Implementation of `FatIO` for basic I/O."""
 import errno
 import io
 import threading
@@ -10,7 +10,7 @@ from fs.mode import Mode
 from pyfat.PyFat import PyFat
 
 
-class FatFile(io.RawIOBase):
+class FatIO(io.RawIOBase):
     """Wrap basic I/O operations for PyFat."""
 
     def __init__(self, fs: PyFat,
@@ -23,7 +23,7 @@ class FatFile(io.RawIOBase):
                             the file must exist.
         :param mode: `Mode`: Mode to open file in.
         """
-        super(FatFile, self).__init__()
+        super(FatIO, self).__init__()
         self.mode = Mode(mode)
         self.fs = fs
         self.__fp = None
