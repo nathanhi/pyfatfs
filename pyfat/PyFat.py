@@ -287,8 +287,7 @@ class PyFat(object):
 
         # Fill list of found free clusters
         free_clusters = []
-        for i in enumerate(self.fat):
-            i = i[1]
+        for i, _ in enumerate(self.fat):
             if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] > i > self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
                 # Ignore out of bound entries
                 continue
@@ -312,7 +311,7 @@ class PyFat(object):
             raise PyFATException(f"Not enough free space to allocate {size} bytes ({free_space} bytes free)")
 
         # Allocate cluster chain in FAT
-        for i in range(0, len(free_clusters)):
+        for i, _ in enumerate(free_clusters):
             try:
                 self.fat[free_clusters[i]] = free_clusters[i+1]
             except IndexError:
