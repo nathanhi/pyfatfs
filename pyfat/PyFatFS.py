@@ -94,7 +94,7 @@ class PyFatFS(FS):
             return None
 
         return {"case_insensitive": not self.preserve_case,
-                "invalid_path_chars": "/",
+                "invalid_path_chars": "\0",
                 "max_path_length": 255,
                 "max_sys_path": None,
                 "network": False,
