@@ -182,6 +182,8 @@ class PyFat(object):
         self._parse_fat()
 
         # Parse root directory
+        # TODO: Inefficient to always recursively parse the root dir.
+        #       It would make sense to parse it on demand instead.
         self.parse_root_dir()
 
     @_init_check
