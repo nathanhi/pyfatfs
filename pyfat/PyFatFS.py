@@ -7,13 +7,14 @@ import errno
 from fs.base import FS
 from fs.permissions import Permissions
 from fs.info import Info
-from fs.errors import DirectoryExpected, DirectoryExists, ResourceNotFound
+from fs.errors import DirectoryExpected, DirectoryExists, ResourceNotFound, FileExpected
 from fs import ResourceType
 
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_8dot3_name,\
     make_lfn_entry
 from pyfat.PyFat import PyFat
 from pyfat._exceptions import PyFATException
+from pyfat.file import FatFile
 
 
 class PyFatFS(FS):
@@ -234,41 +235,44 @@ class PyFatFS(FS):
         """Open file from filesystem.
 
         :param path: Path to file on filesystem
-
+        :param mode: Mode to open file in
+        :param buffering: TBD
+        returns: `BinaryIO` stream
         """
-        print("openbin")
+        path = self.validatepath(path)
 
-    """@_init_check
-    def get_file(self, dir_entry: FATDirectoryEntry):
-        ""'"Open given entry if it is a file.""'"
-        if dir_entry.is_special() or dir_entry.is_directory():
-            raise IsADirectoryError(f'Cannot open '
-                                    f'"{dir_entry.__repr__()}", since '
-                                    f'it is a directory')
+        try:
+            info = self.getinfo(path)
+        except ResourceNotFound:
+            raise ResourceNotFound(path)
+        else:
+            if info.is_dir:
+                raise FileExpected(path)
 
-        fullsize = dir_entry.filesize
-        fsz = 0
-        for i in self.get_cluster_chain(dir_entry.fstcluslo):
-            self.__seek(i)
-            sz = self.bpb_header["BPB_SecPerClus"] * \
-                 self.bpb_header["BPB_BytsPerSec"]
-            if fsz + sz > fullsize:
-                sz = fullsize - fsz
-            fsz += sz
-            import sys
-            sys.stdout.write(self.__fp.read(sz).decode('UTF-8'))"""
+        return FatFile(self.fs, path, mode)
+
+    def _get_dir_entry(self, path: str) -> FATDirectoryEntry:
+        """Get a filesystem object for a path.
+
+        :param path: `str`: Path on the filesystem
+        :returns: `FATDirectoryEntry`
+        """
+        path = self.validatepath(path)
+        try:
+            dir_entry = self.fs.root_dir.get_entry(path)
+        except PyFATException as e:
+            if e.errno == errno.ENOENT:
+                raise ResourceNotFound(path)
+            raise e
+
+        return dir_entry
 
     def opendir(self, path: str) -> FATDirectoryEntry:
         """Get a filesystem object for a sub-directory.
 
         :param path: str: Path to a directory on the filesystem.
         """
-        try:
-            dir_entry = self.fs.root_dir.get_entry(path)
-        except PyFATException as e:
-            if e.errno == errno.ENOENT:
-                raise DirectoryExpected(path)
-            raise e
+        dir_entry = self._get_dir_entry(path)
 
         if not dir_entry.is_directory():
             raise DirectoryExpected(path)
