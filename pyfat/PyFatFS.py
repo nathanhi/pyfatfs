@@ -21,16 +21,24 @@ class PyFatFS(FS):
     """PyFilesystem2 extension."""
 
     def __init__(self, filename: str, encoding: str = 'ibm437',
-                 offset: int = 0):
+                 offset: int = 0, preserve_case: bool = True,
+                 read_only: bool = False):
         """PyFilesystem2 FAT constructor, initializes self.fs.
 
-        :param filename: Name of file/device to open as FAT partition
-        :param encoding: Valid Python standard encoding
-        :param offset: Offset from file start to filesystem start in bytes
+        :param filename: `str`: Name of file/device to open as FAT partition.
+        :param encoding: `str`: Valid Python standard encoding.
+        :param offset: `int`: Offset from file start to filesystem
+                       start in bytes.
+        :param preserve_case: `bool`: By default 8DOT3 filenames do not
+                              support casing. If preserve_case is set to
+                              `True`, it will create an LFN entry if the
+                              casing does not conform to 8DOT3.
+        :param read_only: `bool`: If set to true, the filesystem is mounted
+                          in read-only mode, not allowing any modifications.
         """
         super(PyFatFS, self).__init__()
         self.fs = PyFat(encoding=encoding, offset=offset)
-        self.fs.open(filename)
+        self.fs.open(filename, read_only=read_only)
 
     def close(self):
         """Clean up open handles."""
@@ -89,7 +97,7 @@ class PyFatFS(FS):
                 "max_path_length": 255,
                 "max_sys_path": None,
                 "network": False,
-                "read_only": False,
+                "read_only": self.fs.is_read_only,
                 "supports_rename": True}
 
     def getsize(self, path: str):

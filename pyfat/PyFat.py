@@ -129,6 +129,7 @@ class PyFat(object):
         self.initialised = False
         self.fat_clusterchains = {}
         self.encoding = encoding
+        self.is_read_only = True
 
     def __set_fp(self, fp):
         if isinstance(self.__fp, BufferedReader):
@@ -143,9 +144,20 @@ class PyFat(object):
                                  errno=errno.ENXIO)
         self.__fp.seek(address + self.__fp_offset)
 
-    def open(self, filename):
+    def open(self, filename: str, read_only: bool = False):
+        """Open filesystem for usage with PyFat.
+
+        :param filename: `str`: Name of file to open for usage with PyFat.
+        :param read_only: `bool`: Force read-only mode of filesystem.
+        """
+        if read_only is True:
+            mode = 'rb'
+        else:
+            self.is_read_only = False
+            mode = 'rb+'
+
         try:
-            self.__set_fp(open(filename, 'rb'))
+            self.__set_fp(open(filename, mode=mode))
         except OSError as ex:
             raise PyFATException(f"Cannot open given file \'{filename}\'.",
                                  errno=ex.errno)

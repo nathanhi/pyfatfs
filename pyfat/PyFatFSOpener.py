@@ -18,10 +18,5 @@ class PyFatFSOpener(Opener):
     def open_fs(self, fs_url: str, parse_result: ParseResult,
                 create: bool, cwd: str, writeable: bool = True):
         """Handle PyFilesystem2's protocol opening interface."""
-        kwargs = {'offset': parse_result.params.get('offset', 0)}
-        if parse_result.params.get('encoding', None) is not None:
-            kwargs['encoding'] = parse_result.params.get('encoding')
-
-        fs = PyFatFS(filename=parse_result.resource,
-                     **kwargs)
+        fs = PyFatFS(filename=parse_result.resource, **parse_result.params)
         return fs

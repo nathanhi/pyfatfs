@@ -30,7 +30,7 @@ To install pyfat just run from the root of the project:
 
 .. code-block:: bash
 
-    $ python setup.py install
+   $ python setup.py install
 
 
 Usage
@@ -42,8 +42,8 @@ Use fs.open_fs to open a filesystem with a FAT `FS URL <https://pyfilesystem2.re
 
 .. code-block:: python
 
-    import fs
-    my_fs = fs.open_fs("fat:///dev/sda1")
+   import fs
+   my_fs = fs.open_fs("fat:///dev/sda1")
 
 The following URL parameters are supported: encoding and offset
 
@@ -62,8 +62,8 @@ encoding. Any encoding known by Python can be used as value for this parameter.
 
 .. code-block:: python
 
-    import fs
-    my_fs = fs.open_fs("fat:///dev/sda1?encoding=cp1252")
+   import fs
+   my_fs = fs.open_fs("fat:///dev/sda1?encoding=cp1252")
 
 
 offset
@@ -74,8 +74,8 @@ complete disk images can be read if the location of the partition is known:
 
 .. code-block:: python
 
-    import fs
-    my_fs = fs.open_fs("fat:///dev/sda?offset=32256")
+   import fs
+   my_fs = fs.open_fs("fat:///dev/sda?offset=32256")
 
 
 preserve_case
@@ -87,8 +87,21 @@ but can be disabled by setting preserve_case to false:
 
 .. code-block:: python
 
-    import fs
-    my_fs = fs.open_fs("fat:///dev/sda1?preserve_case=false")
+   import fs
+   my_fs = fs.open_fs("fat:///dev/sda1?preserve_case=false")
+
+
+read_only
+^^^^^^^^^
+
+Open filesystem in read-only mode and thus don't allow writes/modifications.
+This defaults to false but can be enabled by setting read_only to true:
+
+.. code-clock:: python
+
+   import fs
+   my_fs = fs.open_fs("fat:///dev/sda1?read_only=true")
+
 
 
 Testing
