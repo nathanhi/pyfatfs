@@ -37,6 +37,7 @@ class PyFatFS(FS):
                           in read-only mode, not allowing any modifications.
         """
         super(PyFatFS, self).__init__()
+        self.preserve_case = preserve_case
         self.fs = PyFat(encoding=encoding, offset=offset)
         self.fs.open(filename, read_only=read_only)
 
@@ -92,7 +93,7 @@ class PyFatFS(FS):
         if namespace != u'standard':
             return None
 
-        return {"case_insensitive": True,
+        return {"case_insensitive": not self.preserve_case,
                 "invalid_path_chars": "/",
                 "max_path_length": 255,
                 "max_sys_path": None,
