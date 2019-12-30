@@ -129,7 +129,7 @@ class PyFatFS(FS):
         :param path: Path to directory on filesystem
         """
         dir_entry = self.opendir(path)
-        dirs, files, specials = dir_entry.get_entries()
+        dirs, files, _ = dir_entry.get_entries()
         return [str(e) for e in dirs+files]
 
     def makedir(self, path: str, permissions: Permissions = None,
