@@ -4,6 +4,7 @@ import errno
 
 import math
 import struct
+import threading
 import warnings
 
 from contextlib import contextmanager
@@ -130,6 +131,7 @@ class PyFat(object):
         self.fat_clusterchains = {}
         self.encoding = encoding
         self.is_read_only = True
+        self.__lock = threading.Lock()
 
     def __set_fp(self, fp):
         if isinstance(self.__fp, BufferedReader):
@@ -144,6 +146,7 @@ class PyFat(object):
                                  errno=errno.ENXIO)
         self.__fp.seek(address + self.__fp_offset)
 
+    @_init_check
     def read_cluster_contents(self, cluster: int) -> bytes:
         """Read contents of given cluster.
 
@@ -152,8 +155,9 @@ class PyFat(object):
         """
         sz = self.bytes_per_cluster
         cluster_address = self.get_cluster_address(cluster)
-        self.__seek(cluster_address)
-        return self.__fp.read(sz)
+        with self.__lock:
+            self.__seek(cluster_address)
+            return self.__fp.read(sz)
 
     def open(self, filename: str, read_only: bool = False):
         """Open filesystem for usage with PyFat.
@@ -212,8 +216,9 @@ class PyFat(object):
         first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"] * self.bpb_header["BPB_BytsPerSec"]
         fats = []
         for i in range(self.bpb_header["BPB_NumFATS"]):
-            self.__seek(first_fat_bytes + (i * fat_size))
-            fats += [self.__fp.read(fat_size)]
+            with self.__lock:
+                self.__seek(first_fat_bytes + (i * fat_size))
+                fats += [self.__fp.read(fat_size)]
 
         if len(fats) < 1:
             raise PyFATException("Invalid number of FATs configured, "
@@ -377,8 +382,9 @@ class PyFat(object):
         """Parse LFN entry at given address."""
         dir_hdr_sz = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
-        self.__seek(address)
-        lfn_dir_data = self.__fp.read(dir_hdr_sz)
+        with self.__lock:
+            self.__seek(address)
+            lfn_dir_data = self.__fp.read(dir_hdr_sz)
 
         lfn_dir_hdr = struct.unpack(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_LAYOUT, lfn_dir_data)
         lfn_dir_hdr = dict(zip(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_VARS, lfn_dir_hdr))
@@ -387,8 +393,10 @@ class PyFat(object):
 
     def __parse_dir_entry(self, address):
         """Parse directory entry at given address."""
-        self.__seek(address)
-        dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
+        with self.__lock:
+            self.__seek(address)
+            dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
+
         dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT,
                                 dir_data)
         dir_hdr = dict(zip(FATDirectoryEntry.FAT_DIRECTORY_VARS, dir_hdr))
@@ -538,23 +546,28 @@ class PyFat(object):
 
     def __parse_fat12_header(self):
         """Parse FAT12/16 header"""
-        self.__seek(0)
-        boot_sector = self.__fp.read(512)
+        with self.__lock:
+            self.__seek(0)
+            boot_sector = self.__fp.read(512)
+
         header = struct.unpack(self.fat12_header_layout,
                                boot_sector[36:][:26])
         self.fat_header = dict(zip(self.fat12_header_vars, header))
 
     def __parse_fat32_header(self):
         """Parse FAT32 header."""
-        self.__seek(0)
-        boot_sector = self.__fp.read(512)
+        with self.__lock:
+            self.__seek(0)
+            boot_sector = self.__fp.read(512)
+
         header = struct.unpack(self.fat32_header_layout,
                                boot_sector[36:][:54])
         self.fat_header = dict(zip(self.fat32_header_vars, header))
 
     def parse_header(self):
-        self.__seek(0)
-        boot_sector = self.__fp.read(512)
+        with self.__lock:
+            self.__seek(0)
+            boot_sector = self.__fp.read(512)
 
         header = struct.unpack(self.bpb_header_layout, boot_sector[:36])
         self.bpb_header = dict(zip(self.bpb_header_vars, header))
@@ -593,8 +606,9 @@ class PyFat(object):
                                  "filesystem corrupt?", errno=errno.EINVAL)
 
         # Check signature
-        self.__seek(510)
-        signature = struct.unpack("<H", self.__fp.read(2))[0]
+        with self.__lock:
+            self.__seek(510)
+            signature = struct.unpack("<H", self.__fp.read(2))[0]
 
         if signature != 0xAA55:
             raise PyFATException("Invalid signature")
@@ -668,7 +682,7 @@ class PyFat(object):
 
     @staticmethod
     @contextmanager
-    def open_fs(filename: PathLike, offset: int = 0,
+    def open_fs(filename: str, offset: int = 0,
                 encoding="ibm437"):
         """Context manager for direct use of PyFAT."""
         pf = PyFat(encoding=encoding, offset=offset)
