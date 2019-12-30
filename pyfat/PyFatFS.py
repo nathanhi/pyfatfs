@@ -170,7 +170,8 @@ class PyFatFS(FS):
         base_cluster_size = 0
         base_cluster_chain = []
         for c in self.fs.get_cluster_chain(base.get_cluster()):
-            base_cluster_chain += [c]
+            b = self.fs.get_cluster_address(c)
+            base_cluster_chain += [b]
             base_cluster_size += self.fs.bytes_per_cluster
 
         dirs, files, _ = base.get_entries()

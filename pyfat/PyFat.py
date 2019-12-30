@@ -424,31 +424,39 @@ class PyFat(object):
         dir_entries = []
         tmp_lfn_entry = FATLongDirectoryEntry()
         max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
-        for b in self.get_cluster_chain(cluster):
+        for c in self.get_cluster_chain(cluster):
             # Parse all directory entries in chain
+            b = self.get_cluster_address(c)
             tmp_dir_entries, tmp_lfn_entry = self.parse_dir_entries_in_address(b, b+max_bytes, tmp_lfn_entry)
             dir_entries += tmp_dir_entries
 
         return dir_entries
+
+    def get_cluster_address(self, cluster: int) -> int:
+        """Get offset of given cluster in bytes.
+
+        :param cluster: Cluster number as `int`
+        :returns: Bytes address location of cluster
+        """
+        # First two cluster entries are reserved
+        sector = (cluster - 2) * self.bpb_header["BPB_SecPerClus"] + self.first_data_sector
+        return sector * self.bpb_header["BPB_BytsPerSec"]
 
     @_init_check
     def get_cluster_chain(self, first_cluster):
         """Follow a cluster chain beginning with the first cluster address."""
         i = first_cluster
         while i <= len(self.fat):
-            # First two cluster entries are reserved
-            first_sector_of_cluster = int((i-2) * self.bpb_header["BPB_SecPerClus"] + self.first_data_sector)
-            address = first_sector_of_cluster * self.bpb_header["BPB_BytsPerSec"]
             if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] <= self.fat[i] <= self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
                 # Normal data cluster, follow chain
-                yield address
+                yield i
             elif self.fat_type == self.FAT_TYPE_FAT12 and self.fat[i] == self.FAT12_SPECIAL_EOC:
                 # Special EOC
-                yield address
+                yield i
                 return
             elif self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MIN"] <= self.fat[i] <= self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]:
                 # End of cluster, end chain
-                yield address
+                yield i
                 return
             elif self.fat[i] == self.FAT_CLUSTER_VALUES[self.fat_type]["BAD_CLUSTER"]:
                 # Bad cluster, cannot follow chain, file broken!
