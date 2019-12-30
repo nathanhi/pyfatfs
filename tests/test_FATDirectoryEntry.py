@@ -33,8 +33,8 @@ def test_checksum_calculation_precalculated():
     assert calculate_checksum(b'FILENAMETXT') == 58
 
 
-def test_checksum_calculation_referenceimpl():
-    """Test that the checksum calculation works, following reference impl.
+def calculate_checksum_referenceimpl(fname: bytes) -> int:
+    """Calculate checksum of a string based on reference implementation.
 
     This is taken from the Microsoft Extensible Firmware Initiative
     FAT32 File System Spec v1.03.
@@ -49,41 +49,26 @@ def test_checksum_calculation_referenceimpl():
        }
 
     """
-    fname = b'FILENAMETXT'
-
     s = 0
     for i in range(0, 11):
         s = (0x80 if (s & 1) == 1 else 0x0) + (s >> 1) + fname[i]
         s &= 0xFF
 
-    assert calculate_checksum(fname) == s
+    return s
+
+
+def test_checksum_calculation_referenceimpl():
+    """Test that the checksum calculation works, following reference impl."""
+    fname = b'FILENAMETXT'
+    assert calculate_checksum(fname) == calculate_checksum_referenceimpl(fname)
 
 
 def test_checksum_calculation_referenceimpl_random():
-    """Test that the checksum calculation works, following reference impl.
-
-    This is taken from the Microsoft Extensible Firmware Initiative
-    FAT32 File System Spec v1.03 and uses random data.
-
-    .. code-block:
-       short FcbNameLen;
-       unsigned char Sum;
-
-       Sum = 0;
-       for (FcbNameLen=11; FcbNameLen!=0; FcbNameLen--) {
-           Sum = ((Sum & 1) ? 0x80 : 0) + (Sum >> 1) + *pFcbName++;
-       }
-
-    """
+    """Test that the checksum calculation works, following reference impl."""
     fname = ''.join(random.choices(string.ascii_letters + string.digits,
                                    k=11)).upper().encode('ASCII')
 
-    s = 0
-    for i in range(0, 11):
-        s = (0x80 if (s & 1) == 1 else 0x0) + (s >> 1) + fname[i]
-        s &= 0xFF
-
-    assert calculate_checksum(fname) == s
+    assert calculate_checksum(fname) == calculate_checksum_referenceimpl(fname)
 
 
 def test_make_8dot3_name():
