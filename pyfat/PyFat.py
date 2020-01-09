@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import errno
+import itertools
 
 import math
 import struct
@@ -10,8 +11,10 @@ import warnings
 from contextlib import contextmanager
 from io import BufferedReader, open
 
+from pyfat import FAT_OEM_ENCODING
+from pyfat.EightDotThree import EightDotThree
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
-from pyfat._exceptions import PyFATException
+from pyfat._exceptions import PyFATException, NotAFatEntryException
 
 
 def _init_check(func):
@@ -21,9 +24,21 @@ def _init_check(func):
         if initialised is True:
             return func(*args, **kwargs)
         else:
-            raise PyFATException(
-                "Class has not yet been fully initialised, "
-                "please instantiate first.")
+            raise PyFATException("Class has not yet been fully initialised, "
+                                 "please instantiate first.")
+
+    return _wrapper
+
+
+def _readonly_check(func):
+    def _wrapper(*args, **kwargs):
+        read_only = args[0].is_read_only
+
+        if read_only is False:
+            return func(*args, **kwargs)
+        else:
+            raise PyFATException("Filesystem has been opened read-only, not "
+                                 "able to perform a write operation!")
 
     return _wrapper
 
@@ -152,7 +167,7 @@ class PyFat(object):
         :returns: Contents of cluster as `bytes`
         """
         sz = self.bytes_per_cluster
-        cluster_address = self.get_cluster_address(cluster)
+        cluster_address = self.get_data_cluster_address(cluster)
         with self.__lock:
             self.__seek(cluster_address)
             return self.__fp.read(sz)
@@ -279,8 +294,112 @@ class PyFat(object):
                                  "report this error.")
 
     @_init_check
-    def allocate_bytes(self, size: int):
-        """Allocate cluster in FAT."""
+    def byte_repr(self) -> bytearray:
+        """Represent current state of FAT as bytes.
+
+        :returns: `bytes` representation of FAT.
+        """
+        b = bytearray(b'')
+        if self.fat_type == self.FAT_TYPE_FAT12:
+            raise NotImplementedError("FAT12 write support currently not implemented!")
+        elif self.fat_type == self.FAT_TYPE_FAT16:
+            fmt = "<H"
+        else:
+            # FAT32
+            fmt = "<L"
+
+        for c in self.fat:
+            b += struct.pack(fmt, c)
+        return b
+
+    @_init_check
+    @_readonly_check
+    def _write_data_to_address(self, data: bytes,
+                               address: int):
+        """Write given data directly to the filesystem.
+
+        Directly writes to the filesystem without any consistency check.
+        **Use with caution**
+
+        :param data: `bytes`: Data to write to address
+        :param address: `int`: Offset to write data to.
+        """
+        with self.__lock:
+            self.__seek(address)
+            self.__fp.write(data)
+
+    @_init_check
+    @_readonly_check
+    def write_data_to_cluster(self, data: bytes,
+                              cluster: int,
+                              extend_cluster: bool = True,
+                              erase: bool = False) -> None:
+        """Write given data to cluster.
+
+        Extends cluster chain if needed.
+
+        :param data: `bytes`: Data to write to cluster
+        :param cluster: `int`: Cluster to write data to.
+        :param extend_cluster: `bool`: Automatically extend cluster chain
+                               if not enough space is available.
+        :param erase: `bool`: Erase cluster contents before writing.
+                      This is useful when writing `FATDirectoryEntry` data.
+        """
+        data_sz = len(data)
+        cluster_sz = 0
+        last_cluster = None
+        for c in self.get_cluster_chain(cluster):
+            cluster_sz += self.bytes_per_cluster
+            last_cluster = c
+
+        if data_sz > cluster_sz:
+            if extend_cluster is False:
+                raise PyFATException("Cannot write data to cluster, "
+                                     "not enough space available.",
+                                     errno=errno.ENOSPC)
+
+            new_chain = self.allocate_bytes(data_sz - cluster_sz,
+                                            erase=erase)[0]
+            self.fat[last_cluster] = new_chain
+
+        # Fill rest of data with zeroes if erase is set to True
+        if erase:
+            new_sz = data_sz + (self.bytes_per_cluster - data_sz) % self.bytes_per_cluster
+            data += b'\0' * (new_sz - data_sz)
+
+        # Write actual data
+        bytes_written = 0
+        for c in self.get_cluster_chain(cluster):
+            b = self.get_data_cluster_address(c)
+            t = bytes_written
+            bytes_written += self.bytes_per_cluster
+            self._write_data_to_address(data[t:bytes_written],
+                                        b)
+
+    @_init_check
+    @_readonly_check
+    def flush_fat(self) -> None:
+        """Flush FAT(s) to disk."""
+        fat_size = self.bpb_header["BPB_BytsPerSec"] * self._get_fat_size_count()
+        first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"] * self.bpb_header["BPB_BytsPerSec"]
+        for i in range(self.bpb_header["BPB_NumFATS"]):
+            with self.__lock:
+                self.__seek(first_fat_bytes + (i * fat_size))
+                self.__fp.write(self.byte_repr())
+
+    @_init_check
+    @_readonly_check
+    def allocate_bytes(self, size: int, erase: bool = False):
+        """Try to allocate a cluster (-chain) in FAT for `size` bytes.
+
+        :param size: `int`: Size in bytes to try to allocate.
+        :param erase: `bool`: If set to true, the newly allocated
+                              space is zeroed-out for clean allocation.
+        :returns: List of newly-allocated clusters.
+        """
+        if self.is_read_only:
+            raise PyFATException("Cannot allocate bytes ")
+
         # Calculate number of clusters required for file
         num_clusters = size / self.bytes_per_cluster
         num_clusters = math.ceil(num_clusters)
@@ -308,7 +427,9 @@ class PyFat(object):
                 free_clusters += [i]
         else:
             free_space = len(free_clusters) * self.bytes_per_cluster
-            raise PyFATException(f"Not enough free space to allocate {size} bytes ({free_space} bytes free)")
+            raise PyFATException(f"Not enough free space to allocate "
+                                 f"{size} bytes ({free_space} bytes free)",
+                                 errno=errno.ENOSPC)
 
         # Allocate cluster chain in FAT
         for i, _ in enumerate(free_clusters):
@@ -317,10 +438,58 @@ class PyFat(object):
             except IndexError:
                 self.fat[free_clusters[i]] = self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]
 
-        # TODO: Write FAT to disk
-        pass
+            if erase is True:
+                with self.__lock:
+                    self.__seek(self.get_data_cluster_address(i))
+                    self.__fp.write(b'\0' * self.bytes_per_cluster)
 
         return free_clusters
+
+    @_init_check
+    @_readonly_check
+    def update_directory_entry(self, dir_entry: FATDirectoryEntry) -> None:
+        """Update directory entry on disk.
+
+        Special handling is required, since the root directory
+        on FAT12/16 is on a fixed location on disk.
+
+        :param dir_entry: `FATDirectoryEntry`: Directory to write to disk
+        """
+        is_root_dir = False
+        extend_cluster_chain = True
+        if self.root_dir == dir_entry:
+            if self.fat_type != self.FAT_TYPE_FAT32:
+                # FAT12/16 doesn't have a root directory cluster,
+                # which cannot be enhanced
+                extend_cluster_chain = False
+            is_root_dir = True
+
+        # Gather all directory entries
+        dir_entries = b''
+        d, f, s = dir_entry.get_entries()
+        for d in list(itertools.chain(d, f, s)):
+            dir_entries += d.byte_repr()
+
+        # Write content
+        if not is_root_dir or self.fat_type == self.FAT_TYPE_FAT32:
+            # FAT32 and non-root dir entries can be handled normally
+            self.write_data_to_cluster(dir_entries,
+                                       dir_entry.get_cluster(),
+                                       extend_cluster=extend_cluster_chain,
+                                       erase=True)
+        else:
+            # FAT12/16 does not have a root directory cluster
+            root_dir_addr = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
+            root_dir_sz = self.root_dir_sectors * self.bpb_header["BPB_BytsPerSec"]
+
+            if len(dir_entries) > root_dir_sz:
+                raise PyFATException("Cannot create directory, maximum number "
+                                     "of root directory entries exhausted!",
+                                     errno=errno.ENOSPC)
+
+            # Overwrite empty space as well
+            dir_entries += b'\0' * (root_dir_sz - len(dir_entries))
+            self._write_data_to_address(dir_entries, root_dir_addr)
 
     def _fat12_parse_root_dir(self):
         """Parses the FAT12/16 root dir entries.
@@ -328,7 +497,9 @@ class PyFat(object):
         and is therefore size limited (BPB_RootEntCnt).
         """
         root_dir_byte = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
-        root_dir_entry = FATDirectoryEntry(DIR_Name="/",
+        root_dir_sfn = EightDotThree()
+        root_dir_sfn.set_str_name("ROOTDIR")
+        root_dir_entry = FATDirectoryEntry(DIR_Name=root_dir_sfn,
                                            DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                            DIR_NTRes=0,
                                            DIR_CrtTimeTenth=0,
@@ -355,15 +526,25 @@ class PyFat(object):
         FAT32 actually has its root directory entries distributed
         across a cluster chain that we need to follow
         """
-        root_dir_entry_cluster = self.fat_header["BPB_RootClus"]
-        root_dir_entry = FATDirectoryEntry("/",
-                                           FATDirectoryEntry.ATTR_DIRECTORY,
-                                           "0", "0", "0", "0", "0", "0", "0",
-                                           self.fat_header["BPB_RootClus"],
-                                           "0", encoding=self.encoding)
+        root_dir_cluster = self.fat_header["BPB_RootClus"]
+        root_dir_sfn = EightDotThree()
+        root_dir_sfn.set_str_name("ROOTDIR")
+        root_dir_entry = FATDirectoryEntry(DIR_Name=root_dir_sfn,
+                                           DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                           DIR_NTRes=0,
+                                           DIR_CrtTimeTenth=0,
+                                           DIR_CrtDateTenth=0,
+                                           DIR_LstAccessDate=0,
+                                           DIR_FstClusHI=0,
+                                           DIR_WrtTime=0,
+                                           DIR_WrtDate=0,
+                                           DIR_FstClusLO=0,
+                                           DIR_FileSize=0,
+                                           encoding=self.encoding)
+        root_dir_entry.set_cluster(root_dir_cluster)
 
         # Follow root directory cluster chain
-        for dir_entry in self.parse_dir_entries_in_cluster_chain(root_dir_entry_cluster):
+        for dir_entry in self.parse_dir_entries_in_cluster_chain(root_dir_cluster):
             root_dir_entry.add_subdirectory(dir_entry)
 
         return root_dir_entry
@@ -456,13 +637,13 @@ class PyFat(object):
         max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
         for c in self.get_cluster_chain(cluster):
             # Parse all directory entries in chain
-            b = self.get_cluster_address(c)
+            b = self.get_data_cluster_address(c)
             tmp_dir_entries, tmp_lfn_entry = self.parse_dir_entries_in_address(b, b+max_bytes, tmp_lfn_entry)
             dir_entries += tmp_dir_entries
 
         return dir_entries
 
-    def get_cluster_address(self, cluster: int) -> int:
+    def get_data_cluster_address(self, cluster: int) -> int:
         """Get offset of given cluster in bytes.
 
         :param cluster: Cluster number as `int`
@@ -506,6 +687,9 @@ class PyFat(object):
     @_init_check
     def close(self):
         """Close session and free up all handles."""
+        if not self.is_read_only:
+            self.flush_fat()
+
         self.__fp.close()
         self.initialised = False
 
