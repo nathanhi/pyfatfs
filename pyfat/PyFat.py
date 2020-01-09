@@ -202,6 +202,11 @@ class PyFat(object):
         self.parse_root_dir()
 
     @_init_check
+    def get_fs_location(self):
+        """Retrieve path of opened filesystem."""
+        return self.__fp.name
+
+    @_init_check
     def _get_total_sectors(self):
         """Get total number of sectors for all FAT sizes."""
         if self.bpb_header["BPB_TotSec16"] != 0:
