@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
 """Directory entry operations with PyFAT."""
-import os
+
 import struct
 
+from pyfat.EightDotThree import EightDotThree
 from pyfat._exceptions import PyFATException, NotAnLFNEntryException,\
     BrokenLFNEntryException
+from pyfat import FAT_OEM_ENCODING, FAT_LFN_ENCODING
 
 import errno
 
@@ -43,13 +45,14 @@ class FATDirectoryEntry(object):
                           "DIR_WrtTime", "DIR_WrtDate",
                           "DIR_FstClusLO", "DIR_FileSize"]
 
-    def __init__(self, DIR_Name, DIR_Attr, DIR_NTRes, DIR_CrtTimeTenth,
-                 DIR_CrtDateTenth, DIR_LstAccessDate, DIR_FstClusHI,
-                 DIR_WrtTime, DIR_WrtDate, DIR_FstClusLO, DIR_FileSize,
-                 encoding, lfn_entry=None):
+    def __init__(self, DIR_Name, DIR_Attr, DIR_NTRes,
+                 DIR_CrtTimeTenth, DIR_CrtDateTenth, DIR_LstAccessDate,
+                 DIR_FstClusHI, DIR_WrtTime, DIR_WrtDate, DIR_FstClusLO,
+                 DIR_FileSize, encoding: str = FAT_OEM_ENCODING,
+                 lfn_entry=None):
         """FAT directory entry constructor.
 
-        :param DIR_Name: Directory name can either be string or byte string
+        :param DIR_Name: `EightDotThree` class instance
         :param DIR_Attr: Attributes of directory
         :param DIR_NTRes: Reserved attributes of directory entry
         :param DIR_CrtTimeTenth: Creation timestamp of entry
@@ -63,20 +66,6 @@ class FATDirectoryEntry(object):
         :param encoding: Encoding of filename
         :param lfn_entry: FATLongDirectoryEntry instance or None
         """
-        if len(DIR_Name) > 0:
-            if DIR_Name[0] == 0x0 or DIR_Name[0] == 0xE5:
-                # Empty directory entry
-                raise NotADirectoryError("Given dir entry is invalid and has "
-                                         "no valid name.")
-
-            if DIR_Name[0] == 0x05:
-                # Translate 0x05 to 0xE5
-                DIR_Name = DIR_Name.replace(bytes(0x05), bytes(0xE5), 1)
-
-        if isinstance(DIR_Name, str):
-            # Encode it to given encoding
-            DIR_Name = DIR_Name.encode(encoding)
-
         self.name = DIR_Name
         self.attr = int(DIR_Attr)
         self.ntres = int(DIR_NTRes)
@@ -98,18 +87,12 @@ class FATDirectoryEntry(object):
         self.__dirs = set()
         self.__encoding = encoding
 
-        if not is_8dot3_conform(self.get_short_name()):
-            raise PyFATException(f"Given directory name "
-                                 f"{self.get_short_name()} is not conform "
-                                 f"to 8.3 file naming convention.",
-                                 errno=errno.EINVAL)
-
     def get_checksum(self) -> int:
         """Get calculated checksum of this directory entry.
 
         :returns: Checksum as int
         """
-        return calculate_checksum(self.name)
+        return self.name.checksum()
 
     def set_lfn_entry(self, lfn_entry):
         """Set LFN entry for current directory entry.
@@ -388,19 +371,7 @@ class FATDirectoryEntry(object):
 
         :returns: str: Name of directory entry
         """
-        n = self.name.decode(self.__encoding)
-
-        sep = "."
-        if self.attr == self.ATTR_DIRECTORY:
-            sep = ""
-
-        name = n[0:8].strip()
-        ext = n[8:11].strip()
-
-        if ext == "":
-            return name
-        else:
-            return sep.join([name, ext])
+        return self.name.get_unpadded_filename()
 
     def get_long_name(self):
         """Get long name of directory entry.
@@ -524,107 +495,24 @@ class FATLongDirectoryEntry(object):
         return False
 
 
-def calculate_checksum(filename: bytes) -> int:
-    """Calculate checksum of byte string.
-
-    :param filename: Filename to calculate checksum of
-    :returns: Checksum as int
-    """
-    chksum = 0
-    for c in filename:
-        chksum = ((chksum >> 1) | (chksum & 1) << 7) + c
-        chksum &= 0xFF
-    return chksum
-
-
-def make_8dot3_name(dir_name: str, parent_dir_entry: FATDirectoryEntry):
-    """Generate filename based on 8.3 rules out of a long file name.
-
-    In 8.3 notation we try to use the first 6 characters and
-    fill the rest with a tilde, followed by a number (starting
-    at 1). If that entry is already given, we increment this
-    number and try again until all possibilities are exhausted
-    (i.e. A~999999.TXT).
-
-    :param dir_name: Long name of directory entry
-    :param parent_dir_entry: Directory entry of parent dir.
-    :raises: PyFATException: If parent dir is not a directory
-                             or all name generation possibilities
-                             are exhausted
-    """
-    dirs, files, _ = parent_dir_entry.get_entries()
-    dir_entries = [e.get_short_name() for e in dirs+files]
-
-    extsep = "."
-
-    try:
-        basename = dir_name.upper().rsplit(".", 1)[0][0:8]
-    except IndexError:
-        basename = ""
-
-    try:
-        extname = dir_name.upper().rsplit(".", 1)[1][0:3]
-    except IndexError:
-        extname = ""
-
-    if len(extname) == 0:
-        extsep = ""
-
-    i = 0
-    while len(str(i)) + 1 <= 7:
-        if i > 0:
-            maxlen = 8-(1+len(str(i)))
-            basename = f"{basename[0:maxlen]}~{i}"
-
-        short_name = f"{basename}{extsep}{extname}"
-
-        if short_name not in dir_entries:
-            return short_name
-        i += 1
-
-    raise PyFATException("Cannot generate 8dot3 filename, "
-                         "unable to find suiting short file name.",
-                         errno=errno.EEXIST)
-
-
-def is_8dot3_conform(entry_name: str):
-    """Indicate conformance of given entries name to 8.3 standard.
-
-    :param entry_name: Name of entry to check
-    :returns: bool indicating conformance of name to 8.3 standard
-    """
-    if entry_name != entry_name.upper():
-        # Case sensitivity check
-        return False
-
-    root, ext = os.path.splitext(entry_name)
-    ext = ext[1:]
-    if len(root) > 8 and len(ext) > 0:
-        return False
-    elif len(ext) == 0 and len(root) > 11:
-        return False
-    elif len(ext) > 3:
-        return False
-
-    return True
-
-
-def make_lfn_entry(dir_name: str, short_name: bytes, encoding: str = 'ibm437'):
+def make_lfn_entry(dir_name: str,
+                   short_name,
+                   encoding: str = FAT_LFN_ENCODING):
     """Generate a `FATLongDirectoryEntry` instance from directory name.
 
     :param dir_name: Long name of directory
-    :param short_name: Short file name accompanying the LFN entry
+    :param short_name: `EightDotThree` class instance
     :param encoding: Encoding of file name
     :raises PyFATException if entry name does not require an LFN
             entry or the name exceeds the FAT limitation of 255 characters
     """
     lfn_entry = FATLongDirectoryEntry()
-    lfn_entry_length = 13
-    dir_name = bytearray(dir_name.encode(encoding))
+    #: Length in bytes of an LFN entry
+    lfn_entry_length = 26
+    dir_name = dir_name.encode(encoding)
     dir_name_modulus = len(dir_name) % lfn_entry_length
-    lfn_dir_name = bytearray()
 
-    if is_8dot3_conform(dir_name.decode(encoding)):
+    if EightDotThree.is_8dot3_conform(dir_name.decode(encoding)):
         raise PyFATException("Directory entry is already 8.3 conform, "
                              "no need to create an LFN entry.",
                              errno=errno.EINVAL)
@@ -634,35 +522,30 @@ def make_lfn_entry(dir_name: str, short_name: bytes, encoding: str = 'ibm437'):
                              "characters, not supported.",
                              errno=errno.ENAMETOOLONG)
 
-    checksum = calculate_checksum(short_name)
+    checksum = short_name.checksum()
 
-    i = 0
-    while i < len(dir_name):
-        lfn_dir_name.extend([dir_name[i], 0x00])
-        i += 1
+    if dir_name_modulus != 0:
+        # Null-terminate string if required
+        dir_name += '\0'.encode(FAT_LFN_ENCODING)
 
-    if dir_name_modulus == 0:
-        # Remove last NULL byte if string evenly fits to LFN entries
-        lfn_dir_name = lfn_dir_name[:-1]
-    else:
-        # Fill the rest with 0xFF if it doesn't fit evenly
-        padding = lfn_entry_length - (len(lfn_dir_name) % lfn_entry_length)
-        lfn_dir_name.extend([0xFF]*padding)
+    # Fill the rest with 0xFF if it doesn't fit evenly
+    new_sz = len(dir_name) + (lfn_entry_length - len(dir_name)) % lfn_entry_length
+    dir_name += b'\xFF' * (new_sz - len(dir_name))
 
     # Generate linked LFN entries
-    lfn_entries = len(lfn_dir_name) // lfn_entry_length*2
+    lfn_entries = len(dir_name) // lfn_entry_length
     for i in range(lfn_entries):
-        if i == lfn_entries:
-            lfn_entry_ord = 0x40
+        if i == lfn_entries-1:
+            lfn_entry_ord = 0x40 | i+1
         else:
-            lfn_entry_ord = i
+            lfn_entry_ord = i+1
 
-        n = i*lfn_entry_length*2
-        dirname1 = lfn_dir_name[n:n+10]
+        n = i*lfn_entry_length
+        dirname1 = dir_name[n:n+10]
         n += 10
-        dirname2 = lfn_dir_name[n:n+12]
+        dirname2 = dir_name[n:n+12]
         n += 12
-        dirname3 = lfn_dir_name[n:n+4]
+        dirname3 = dir_name[n:n+4]
 
         lfn_entry.add_lfn_entry(LDIR_Ord=lfn_entry_ord,
                                 LDIR_Name1=dirname1,
