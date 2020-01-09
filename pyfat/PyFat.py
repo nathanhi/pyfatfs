@@ -502,29 +502,13 @@ class PyFat(object):
         and is therefore size limited (BPB_RootEntCnt).
         """
         root_dir_byte = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
-        root_dir_sfn = EightDotThree()
-        root_dir_sfn.set_str_name("ROOTDIR")
-        root_dir_entry = FATDirectoryEntry(DIR_Name=root_dir_sfn,
-                                           DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                                           DIR_NTRes=0,
-                                           DIR_CrtTimeTenth=0,
-                                           DIR_CrtDateTenth=0,
-                                           DIR_LstAccessDate=0,
-                                           DIR_FstClusHI=0,
-                                           DIR_WrtTime=0,
-                                           DIR_WrtDate=0,
-                                           DIR_FstClusLO=0,
-                                           DIR_FileSize=0,
-                                           encoding=self.encoding)
-        root_dir_entry.set_cluster(self.root_dir_sector // self.bpb_header["BPB_SecPerClus"])
+        self.root_dir.set_cluster(self.root_dir_sector // self.bpb_header["BPB_SecPerClus"])
         max_bytes = self.bpb_header["BPB_RootEntCnt"] * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         # Parse all directory entries in root directory
         subdirs, _ = self.parse_dir_entries_in_address(root_dir_byte, root_dir_byte + max_bytes)
         for dir_entry in subdirs:
-            root_dir_entry.add_subdirectory(dir_entry)
-
-        return root_dir_entry
+            self.root_dir.add_subdirectory(dir_entry)
 
     def _fat32_parse_root_dir(self):
         """Parses the FAT32 root dir entries.
@@ -532,34 +516,33 @@ class PyFat(object):
         across a cluster chain that we need to follow
         """
         root_dir_cluster = self.fat_header["BPB_RootClus"]
-        root_dir_sfn = EightDotThree()
-        root_dir_sfn.set_str_name("ROOTDIR")
-        root_dir_entry = FATDirectoryEntry(DIR_Name=root_dir_sfn,
-                                           DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                                           DIR_NTRes=0,
-                                           DIR_CrtTimeTenth=0,
-                                           DIR_CrtDateTenth=0,
-                                           DIR_LstAccessDate=0,
-                                           DIR_FstClusHI=0,
-                                           DIR_WrtTime=0,
-                                           DIR_WrtDate=0,
-                                           DIR_FstClusLO=0,
-                                           DIR_FileSize=0,
-                                           encoding=self.encoding)
-        root_dir_entry.set_cluster(root_dir_cluster)
+        self.root_dir.set_cluster(root_dir_cluster)
 
         # Follow root directory cluster chain
         for dir_entry in self.parse_dir_entries_in_cluster_chain(root_dir_cluster):
-            root_dir_entry.add_subdirectory(dir_entry)
-
-        return root_dir_entry
+            self.root_dir.add_subdirectory(dir_entry)
 
     def parse_root_dir(self):
         """Parses root directory entry."""
+        root_dir_sfn = EightDotThree()
+        root_dir_sfn.set_str_name("ROOTDIR")
+        self.root_dir = FATDirectoryEntry(DIR_Name=root_dir_sfn,
+                                          DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                          DIR_NTRes=0,
+                                          DIR_CrtTimeTenth=0,
+                                          DIR_CrtDateTenth=0,
+                                          DIR_LstAccessDate=0,
+                                          DIR_FstClusHI=0,
+                                          DIR_WrtTime=0,
+                                          DIR_WrtDate=0,
+                                          DIR_FstClusLO=0,
+                                          DIR_FileSize=0,
+                                          encoding=self.encoding)
+
         if self.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
-            self.root_dir = self._fat12_parse_root_dir()
+            self._fat12_parse_root_dir()
         else:
-            self.root_dir = self._fat32_parse_root_dir()
+            self._fat32_parse_root_dir()
 
     def parse_lfn_entry(self,
                         lfn_entry: FATLongDirectoryEntry = None,
