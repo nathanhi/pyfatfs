@@ -597,11 +597,20 @@ class PyFat(object):
         for hdr_addr in range(address, max_address, dir_hdr_size):
             # Parse each entry
             dir_hdr = self.__parse_dir_entry(hdr_addr)
-
-            if dir_hdr["DIR_Name"][0] == 0x0 or dir_hdr["DIR_Name"][0] == 0xE5:
-                # Empty directory entry, ignore and reset LFN entries
+            dir_sn = EightDotThree(encoding=self.encoding)
+            try:
+                dir_sn.set_byte_name(dir_hdr["DIR_Name"])
+            except NotAFatEntryException as ex:
+                # Not a directory of any kind, invalidate temporary LFN entries
                 tmp_lfn_entry = FATLongDirectoryEntry()
-                continue
+                if ex.free_type == ex.FREE_ENTRY:
+                    # Empty directory entry,
+                    continue
+                elif ex.free_type == ex.LAST_ENTRY:
+                    # Last directory entry, do not parse any further
+                    break
+            else:
+                dir_hdr["DIR_Name"] = dir_sn
 
             # Long File Names
             if FATLongDirectoryEntry.is_lfn_entry(dir_hdr["DIR_Name"],
@@ -866,7 +875,7 @@ class PyFat(object):
     @staticmethod
     @contextmanager
     def open_fs(filename: str, offset: int = 0,
-                encoding="ibm437"):
+                encoding=FAT_OEM_ENCODING):
         """Context manager for direct use of PyFAT."""
         pf = PyFat(encoding=encoding, offset=offset)
         pf.open(filename)
