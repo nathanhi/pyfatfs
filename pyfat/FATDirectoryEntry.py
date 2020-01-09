@@ -108,7 +108,10 @@ class FATDirectoryEntry(object):
         for entry in lfn_entry.lfn_entries:
             entry_chksum = lfn_entry.lfn_entries[entry]["LDIR_Chksum"]
             if entry_chksum != chksum:
-                raise BrokenLFNEntryException
+                raise BrokenLFNEntryException(f'Checksum verification for '
+                                              f'LFN entry of directory '
+                                              f'"{self.get_short_name()}" '
+                                              f'failed')
         self.lfn_entry = lfn_entry
 
     def get_entry_size(self):
@@ -152,17 +155,18 @@ class FATDirectoryEntry(object):
 
         :returns: Entry & LFN entry as bytes-object
         """
-        name = self.name
+        name = self.name.byte_repr()
         if name[0] == 0xE5:
             name[0] = 0x05
 
-        entry = struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr,
-                            self.ntres, self.crttimetenth, self.crtdatetenth,
-                            self.lstaccessdate, self.fstclushi, self.wrttime,
-                            self.wrtdate, self.fstcluslo, self.filesize)
-
+        entry = b''
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
             entry += self.lfn_entry.byte_repr()
+
+        entry += struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr,
+                             self.ntres, self.crttimetenth, self.crtdatetenth,
+                             self.lstaccessdate, self.fstclushi, self.wrttime,
+                             self.wrtdate, self.fstcluslo, self.filesize)
 
         return entry
 
@@ -383,13 +387,7 @@ class FATDirectoryEntry(object):
             raise NotAnLFNEntryException("No LFN entry found for this "
                                          "dir entry.")
 
-        name = ""
-        for i in sorted(self.lfn_entry.lfn_entries.keys()):
-            for h in ["LDIR_Name1", "LDIR_Name2", "LDIR_Name3"]:
-                name += FATLongDirectoryEntry._remove_padding(
-                    self.lfn_entry.lfn_entries[i][h]).decode(self.__encoding)
-
-        return name.strip()
+        return str(self.lfn_entry)
 
 
 class FATLongDirectoryEntry(object):
@@ -403,16 +401,24 @@ class FATLongDirectoryEntry(object):
                                "LDIR_FstClusLO", "LDIR_Name3"]
     #: Ordinance of last LFN entry in a chain
     LAST_LONG_ENTRY = 0x40
+    #: Length for long file name in bytes per entry
+    LFN_ENTRY_LENGTH = 26
 
     def __init__(self):
         """Initialize empty LFN directory entry object."""
         self.lfn_entries = {}
 
+    def get_entries(self):
+        """Get LFS entries in correct order (based on `LDIR_Ord`."""
+        for _, e in sorted(self.lfn_entries.items(),
+                           key=lambda x: x[1]["LDIR_Ord"],
+                           reverse=False):
+            yield e
+
     def byte_repr(self):
         """Represent LFN entries as bytes."""
         entries_bytes = b""
-        for e in self.lfn_entries.keys():
-            e = self.lfn_entries[e]
+        for e in self.get_entries():
             entries_bytes += struct.pack(self.FAT_LONG_DIRECTORY_LAYOUT,
                                          e["LDIR_Ord"], e["LDIR_Name1"],
                                          e["LDIR_Attr"], e["LDIR_Type"],
@@ -420,16 +426,26 @@ class FATLongDirectoryEntry(object):
                                          e["LDIR_FstClusLO"], e["LDIR_Name3"])
         return entries_bytes
 
-    @staticmethod
-    def _remove_padding(entry: bytes):
-        """Remove padding from given LFN entry.
+    def __str__(self):
+        """Remove padding from LFN entry and decode it.
 
-        :param entry: LDIR_Name* entry
+        :returns: `str` decoded string of filename
         """
-        while entry.endswith(b'\xFF\xFF'):
-            entry = entry[:-2]
-        entry = entry.replace(b'\x00', b'')
-        return entry
+        name = b''
+
+        for e in self.get_entries():
+            for h in ["LDIR_Name1", "LDIR_Name2", "LDIR_Name3"]:
+                name += e[h]
+
+        while name.endswith(b'\xFF\xFF'):
+            name = name[:-2]
+
+        name = name.decode(FAT_LFN_ENCODING)
+
+        if name.endswith('\0'):
+            name = name[:-1]
+
+        return name
 
     @staticmethod
     def is_lfn_entry(LDIR_Ord, LDIR_Attr):
@@ -496,23 +512,22 @@ class FATLongDirectoryEntry(object):
 
 
 def make_lfn_entry(dir_name: str,
-                   short_name,
-                   encoding: str = FAT_LFN_ENCODING):
+                   short_name):
     """Generate a `FATLongDirectoryEntry` instance from directory name.
 
     :param dir_name: Long name of directory
     :param short_name: `EightDotThree` class instance
-    :param encoding: Encoding of file name
     :raises PyFATException if entry name does not require an LFN
             entry or the name exceeds the FAT limitation of 255 characters
     """
     lfn_entry = FATLongDirectoryEntry()
     #: Length in bytes of an LFN entry
     lfn_entry_length = 26
-    dir_name = dir_name.encode(encoding)
+    dir_name_str = dir_name
+    dir_name = dir_name.encode(FAT_LFN_ENCODING)
     dir_name_modulus = len(dir_name) % lfn_entry_length
 
-    if EightDotThree.is_8dot3_conform(dir_name.decode(encoding)):
+    if EightDotThree.is_8dot3_conform(dir_name_str):
         raise PyFATException("Directory entry is already 8.3 conform, "
                              "no need to create an LFN entry.",
                              errno=errno.EINVAL)
