@@ -11,17 +11,18 @@ from fs.errors import DirectoryExpected, DirectoryExists,\
     ResourceNotFound, FileExpected
 from fs import ResourceType
 
-from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_8dot3_name,\
-    make_lfn_entry
+from pyfat import FAT_OEM_ENCODING
 from pyfat.PyFat import PyFat
+from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_lfn_entry
 from pyfat._exceptions import PyFATException
 from pyfat.FatIO import FatIO
+from pyfat.EightDotThree import EightDotThree
 
 
 class PyFatFS(FS):
     """PyFilesystem2 extension."""
 
-    def __init__(self, filename: str, encoding: str = 'ibm437',
+    def __init__(self, filename: str, encoding: str = FAT_OEM_ENCODING,
                  offset: int = 0, preserve_case: bool = True,
                  read_only: bool = False):
         """PyFilesystem2 FAT constructor, initializes self.fs.
@@ -156,15 +157,15 @@ class PyFatFS(FS):
         except ResourceNotFound:
             pass
         else:
+            # TODO: Implement recreate param
             raise DirectoryExists(path)
 
-        # Determine file name + LFN
-        short_name = make_8dot3_name(dirname, base)
-        if short_name != dirname:
-            lfn_entry = make_lfn_entry(dirname, short_name,
-                                       encoding=self.fs.encoding)
-        else:
-            lfn_entry = None
+        parent_is_root = base == self.fs.root_dir
+
+        # Determine 8DOT3 file name + LFN
+        short_name = EightDotThree()
+        n = short_name.make_8dot3_name(dirname, base)
+        short_name.set_str_name(n)
 
         newdir = FATDirectoryEntry(DIR_Name=short_name,
                                    DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
@@ -177,40 +178,21 @@ class PyFatFS(FS):
                                    DIR_WrtDate=0,
                                    DIR_FstClusLO=0x00,
                                    DIR_FileSize=0,
-                                   encoding=self.fs.encoding,
-                                   lfn_entry=lfn_entry)
+                                   encoding=self.fs.encoding)
 
-        # Determine position in FAT
-        base_cluster_size = 0
-        base_cluster_chain = []
-        for c in self.fs.get_cluster_chain(base.get_cluster()):
-            b = self.fs.get_cluster_address(c)
-            base_cluster_chain += [b]
-            base_cluster_size += self.fs.bytes_per_cluster
-
-        dirs, files, _ = base.get_entries()
-        base_entries_bytes = 0
-
-        for e in dirs + files:
-            base_entries_bytes += e.get_entry_size()
-
-        base_cluster_free = base_cluster_size - base_entries_bytes
-        if newdir.get_entry_size() > base_cluster_free:
-            # Enhance chain if entries exhausted; FAT32 only
-            if self.fs.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
-                raise PyFATException("Cannot create directory, maximum root "
-                                     "directory entries exhausted!",
-                                     errno=errno.ENOSPC)
-
-            required_bytes = newdir.get_entry_size() - base_cluster_free
-            new_chain = self.fs.allocate_bytes(required_bytes)[0]
-            self.fs.fat[base_cluster_chain[-1:]] = new_chain
+        # Create LFN entry if required
+        if short_name.get_unpadded_filename() != dirname:
+            lfn_entry = make_lfn_entry(dirname, short_name)
+            newdir.set_lfn_entry(lfn_entry)
 
         # Create . and .. directory entries
         first_cluster = self.fs.allocate_bytes(
-            FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE * 2)[0]
+            FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE * 2,
+            erase=True)[0]
         newdir.set_cluster(first_cluster)
-        dot = FATDirectoryEntry(DIR_Name=".",
+        dot_sn = EightDotThree()
+        dot_sn.set_str_name(".")
+        dot = FATDirectoryEntry(DIR_Name=dot_sn,
                                 DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                 DIR_NTRes=newdir.ntres,
                                 DIR_CrtTimeTenth=newdir.crttimetenth,
@@ -222,26 +204,32 @@ class PyFatFS(FS):
                                 DIR_FstClusLO=newdir.fstcluslo,
                                 DIR_FileSize=newdir.filesize,
                                 encoding=self.fs.encoding)
-        dotdot = FATDirectoryEntry(DIR_Name="..",
+        dotdot_sn = EightDotThree()
+        dotdot_sn.set_str_name("..")
+        dotdot = FATDirectoryEntry(DIR_Name=dotdot_sn,
                                    DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                    DIR_NTRes=base.ntres,
                                    DIR_CrtTimeTenth=base.crttimetenth,
                                    DIR_CrtDateTenth=base.crtdatetenth,
                                    DIR_LstAccessDate=base.lstaccessdate,
-                                   DIR_FstClusHI=base.fstclushi,
+                                   DIR_FstClusHI=base.fstclushi if not parent_is_root else 0x0,
                                    DIR_WrtTime=base.wrttime,
                                    DIR_WrtDate=base.wrtdate,
-                                   DIR_FstClusLO=base.fstcluslo,
+                                   DIR_FstClusLO=base.fstcluslo if not parent_is_root else 0x0,
                                    DIR_FileSize=base.filesize,
                                    encoding=self.fs.encoding)
-        assert dot
-        assert dotdot
+        newdir.add_subdirectory(dot)
+        newdir.add_subdirectory(dotdot)
 
-        # TODO: Flush dot and dotdot entries to disk
-        assert True
+        # Write new directory contents
+        self.fs.update_directory_entry(newdir)
 
-        # TODO: Flush directory entry to disk
-        print(f"makedir '{base}' + '{dirname}'")
+        # Write parent directory
+        base.add_subdirectory(newdir)
+        self.fs.update_directory_entry(base)
+
+        # Flush FAT(s) to disk
+        self.fs.flush_fat()
 
     def openbin(self, path: str, mode: str = "r",
                 buffering: int = -1, **options):
