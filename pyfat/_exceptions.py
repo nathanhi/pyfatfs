@@ -38,5 +38,5 @@ class NotAFatEntryException(NotADirectoryError):
         :param msg: Exception message describing what happened
         :param free_type: Either `FREE_ENTRY` or `LAST_ENTRY`.
         """
-        Exception.__init__(self, msg)
+        NotADirectoryError.__init__(self, msg)
         self.free_type = free_type

@@ -53,7 +53,8 @@ class EightDotThree:
 
         return sep.join([base, ext])
 
-    def __raise_8dot3_nonconformant(self, name: str):
+    @staticmethod
+    def __raise_8dot3_nonconformant(name: str):
         raise PyFATException(f"Given directory name "
                              f"{name} is not conform "
                              f"to 8.3 file naming convention.",
