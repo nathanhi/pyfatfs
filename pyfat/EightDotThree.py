@@ -30,6 +30,11 @@ class EightDotThree:
     SFN_LENGTH = 11
 
     def __init__(self, encoding: str = FAT_OEM_ENCODING):
+        """Offer 8DOT3 filename operation.
+
+        :param encoding: Codepage for the 8.3 filename.
+                         Defaults to `FAT_OEM_ENCODING` as per FAT spec.
+        """
         self.name: bytes = None
         self.encoding = encoding
         self.initialised = False

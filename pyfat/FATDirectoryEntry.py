@@ -544,7 +544,8 @@ def make_lfn_entry(dir_name: str,
         dir_name += '\0'.encode(FAT_LFN_ENCODING)
 
     # Fill the rest with 0xFF if it doesn't fit evenly
-    new_sz = len(dir_name) + (lfn_entry_length - len(dir_name)) % lfn_entry_length
+    new_sz = len(dir_name) + (lfn_entry_length - len(dir_name))
+    new_sz %= lfn_entry_length
     dir_name += b'\xFF' * (new_sz - len(dir_name))
 
     # Generate linked LFN entries

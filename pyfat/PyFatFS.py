@@ -206,16 +206,18 @@ class PyFatFS(FS):
                                 encoding=self.fs.encoding)
         dotdot_sn = EightDotThree()
         dotdot_sn.set_str_name("..")
+        base_fstclushi = base.fstclushi if not parent_is_root else 0x0
+        base_fstcluslo = base.fstcluslo if not parent_is_root else 0x0
         dotdot = FATDirectoryEntry(DIR_Name=dotdot_sn,
                                    DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                    DIR_NTRes=base.ntres,
                                    DIR_CrtTimeTenth=base.crttimetenth,
                                    DIR_CrtDateTenth=base.crtdatetenth,
                                    DIR_LstAccessDate=base.lstaccessdate,
-                                   DIR_FstClusHI=base.fstclushi if not parent_is_root else 0x0,
+                                   DIR_FstClusHI=base_fstclushi,
                                    DIR_WrtTime=base.wrttime,
                                    DIR_WrtDate=base.wrtdate,
-                                   DIR_FstClusLO=base.fstcluslo if not parent_is_root else 0x0,
+                                   DIR_FstClusLO=base_fstcluslo,
                                    DIR_FileSize=base.filesize,
                                    encoding=self.fs.encoding)
         newdir.add_subdirectory(dot)
