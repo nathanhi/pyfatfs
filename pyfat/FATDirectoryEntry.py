@@ -438,17 +438,21 @@ class FATLongDirectoryEntry(object):
         """Initialize empty LFN directory entry object."""
         self.lfn_entries = {}
 
-    def get_entries(self):
-        """Get LFS entries in correct order (based on `LDIR_Ord`."""
+    def get_entries(self, reverse: bool = False):
+        """Get LFS entries in correct order (based on `LDIR_Ord`).
+
+        :param reverse: `bool`: Returns LFN entries in reversed order.
+                        This is required for byte representation.
+        """
         for _, e in sorted(self.lfn_entries.items(),
                            key=lambda x: x[1]["LDIR_Ord"],
-                           reverse=False):
+                           reverse=reverse):
             yield e
 
     def byte_repr(self):
         """Represent LFN entries as bytes."""
         entries_bytes = b""
-        for e in self.get_entries():
+        for e in self.get_entries(reverse=True):
             entries_bytes += struct.pack(self.FAT_LONG_DIRECTORY_LAYOUT,
                                          e["LDIR_Ord"], e["LDIR_Name1"],
                                          e["LDIR_Attr"], e["LDIR_Type"],
@@ -574,8 +578,9 @@ def make_lfn_entry(dir_name: str,
         dir_name += '\0'.encode(FAT_LFN_ENCODING)
 
     # Fill the rest with 0xFF if it doesn't fit evenly
-    new_sz = len(dir_name) + (lfn_entry_length - len(dir_name))
+    new_sz = lfn_entry_length - len(dir_name)
     new_sz %= lfn_entry_length
+    new_sz += len(dir_name)
     dir_name += b'\xFF' * (new_sz - len(dir_name))
 
     # Generate linked LFN entries
