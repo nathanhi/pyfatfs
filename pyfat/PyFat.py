@@ -178,10 +178,10 @@ class PyFat(object):
         :param filename: `str`: Name of file to open for usage with PyFat.
         :param read_only: `bool`: Force read-only mode of filesystem.
         """
+        self.is_read_only = read_only
         if read_only is True:
             mode = 'rb'
         else:
-            self.is_read_only = False
             mode = 'rb+'
 
         try:
@@ -402,8 +402,6 @@ class PyFat(object):
                               space is zeroed-out for clean allocation.
         :returns: List of newly-allocated clusters.
         """
-        if self.is_read_only:
-            raise PyFATException("Cannot allocate bytes ")
 
         # Calculate number of clusters required for file
         num_clusters = size / self.bytes_per_cluster
