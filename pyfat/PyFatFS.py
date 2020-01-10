@@ -7,8 +7,8 @@ import errno
 from fs.base import FS
 from fs.permissions import Permissions
 from fs.info import Info
-from fs.errors import DirectoryExpected, DirectoryExists,\
-    ResourceNotFound, FileExpected
+from fs.errors import DirectoryExpected, DirectoryExists, \
+    ResourceNotFound, FileExpected, DirectoryNotEmpty
 from fs import ResourceType
 
 from pyfat import FAT_OEM_ENCODING
@@ -137,8 +137,6 @@ class PyFatFS(FS):
                 recreate: bool = False):
         """Create directory on filesystem.
 
-        *WARNING*: Function not implemented yet!
-
         :param path: Path of new directory on filesystem
         :param permissions: Currently not implemented
         :param recreate: Ignore if directory already exists
@@ -233,6 +231,33 @@ class PyFatFS(FS):
         # Flush FAT(s) to disk
         self.fs.flush_fat()
 
+    def removedir(self, path: str):
+        """Remove empty directories from the filesystem.
+
+        :param path: `str`: Directory to remove
+        """
+        base = "/".join(path.split("/")[:-1])
+        dirname = path.split("/")[-1]
+
+        # Plausability checks
+        try:
+            base = self.opendir(base)
+        except DirectoryExpected:
+            raise ResourceNotFound(path)
+
+        dir_entry = self._get_dir_entry(path)
+        # Verify if the directory is empty
+        if not dir_entry.is_empty():
+            raise DirectoryNotEmpty(path)
+
+        # Remove entry from parent directory
+        base.remove_subdirectory(dirname)
+        self.fs.update_directory_entry(base)
+
+        # Free cluster in FAT
+        self.fs.free_cluster_chain(dir_entry.get_cluster())
+        del dir_entry
+
     def openbin(self, path: str, mode: str = "r",
                 buffering: int = -1, **options):
         """Open file from filesystem.
@@ -285,10 +310,6 @@ class PyFatFS(FS):
     def remove(self, path: str):
         """Not yet implemented."""
         print("remove")
-
-    def removedir(self, path: str):
-        """Not yet implemented."""
-        print("removedir")
 
     def setinfo(self, path: str, info):
         """Not yet implemented."""

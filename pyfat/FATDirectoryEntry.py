@@ -267,6 +267,17 @@ class FATDirectoryEntry(object):
         """
         return (self.ATTR_ARCHIVE & self.attr) > 0
 
+    def is_empty(self):
+        """Determine if directory does not contain any directories."""
+        self._verify_is_directory()
+
+        for d in self.__dirs:
+            if d.is_special():
+                continue
+            return False
+
+        return True
+
     def get_entries(self):
         """Get entries of directory.
 
@@ -359,6 +370,25 @@ class FATDirectoryEntry(object):
 
         dir_entry._add_parent(self)
         self.__dirs.add(dir_entry)
+
+    def remove_subdirectory(self, name):
+        """Remove given dir_entry from dir list."""
+        # Check if current dir entry is even a directory!
+        self._verify_is_directory()
+
+        # Iterate all entries
+        for dir_entry in self.__dirs:
+            sn = dir_entry.get_short_name()
+            try:
+                ln = dir_entry.get_long_name()
+            except NotAnLFNEntryException:
+                ln = None
+            if name in [sn, ln]:
+                self.__dirs.remove(dir_entry)
+                return
+
+        raise PyFATException(f"Cannot remove '{name}', no such "
+                             f"file or directory!", errno=errno.ENOENT)
 
     def __repr__(self):
         """String-represent directory entry by (preferrably) LFN.

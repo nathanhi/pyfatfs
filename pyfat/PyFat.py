@@ -306,7 +306,8 @@ class PyFat(object):
         """
         b = bytearray(b'')
         if self.fat_type == self.FAT_TYPE_FAT12:
-            raise NotImplementedError("FAT12 write support currently not implemented!")
+            raise NotImplementedError("FAT12 write support currently "
+                                      "not implemented!")
         elif self.fat_type == self.FAT_TYPE_FAT16:
             fmt = "<H"
         else:
@@ -332,6 +333,18 @@ class PyFat(object):
         with self.__lock:
             self.__seek(address)
             self.__fp.write(data)
+
+    @_init_check
+    @_readonly_check
+    def free_cluster_chain(self, cluster: int):
+        """Mark a cluster(chain) as free in FAT.
+
+        :param cluster: `int`: Cluster to mark as free
+        """
+        for cl in self.get_cluster_chain(cluster):
+            self.fat[cl] = self.FAT_CLUSTER_VALUES[self.fat_type]['FREE_CLUSTER']
+
+        self.flush_fat()
 
     @_init_check
     @_readonly_check
@@ -369,7 +382,8 @@ class PyFat(object):
 
         # Fill rest of data with zeroes if erase is set to True
         if erase:
-            new_sz = data_sz + (self.bytes_per_cluster - data_sz) % self.bytes_per_cluster
+            new_sz = data_sz + (self.bytes_per_cluster - data_sz)
+            new_sz %= self.bytes_per_cluster
             data += b'\0' * (new_sz - data_sz)
 
         # Write actual data
