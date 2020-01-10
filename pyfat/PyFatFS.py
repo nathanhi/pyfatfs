@@ -189,7 +189,7 @@ class PyFatFS(FS):
             erase=True)[0]
         newdir.set_cluster(first_cluster)
         dot_sn = EightDotThree()
-        dot_sn.set_str_name(".")
+        dot_sn.set_byte_name(b".          ")
         dot = FATDirectoryEntry(DIR_Name=dot_sn,
                                 DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                 DIR_NTRes=newdir.ntres,
@@ -203,7 +203,7 @@ class PyFatFS(FS):
                                 DIR_FileSize=newdir.filesize,
                                 encoding=self.fs.encoding)
         dotdot_sn = EightDotThree()
-        dotdot_sn.set_str_name("..")
+        dotdot_sn.set_byte_name(b"..         ")
         base_fstclushi = base.fstclushi if not parent_is_root else 0x0
         base_fstcluslo = base.fstcluslo if not parent_is_root else 0x0
         dotdot = FATDirectoryEntry(DIR_Name=dotdot_sn,

@@ -89,9 +89,10 @@ def test_make_8dot3_name():
     fde = mock.MagicMock()
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
-    lfn = sfn.make_8dot3_name("This is a long filename.txt", fde)
-    assert "THIS IS TXT" == lfn
-    assert sfn.is_8dot3_conform(lfn)
+    n = sfn.make_8dot3_name("This is a long filename.txt", fde)
+    sfn.set_str_name(n)
+    assert "THISIS.TXT" == n
+    assert sfn.is_8dot3_conform(sfn.get_unpadded_filename())
 
 
 def test_make_8dot3_name_cut_ext():
@@ -100,7 +101,7 @@ def test_make_8dot3_name_cut_ext():
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename.TeXT", fde)
-    assert "THIS IS TEX" == lfn
+    assert "THISIS.TEX" == lfn
     assert sfn.is_8dot3_conform(lfn)
 
 
@@ -110,7 +111,7 @@ def test_make_8dot3_name_noext():
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename", fde)
-    assert "THIS IS    " == lfn
+    assert "THISIS" == lfn
     assert sfn.is_8dot3_conform(lfn)
 
 
@@ -120,7 +121,7 @@ def test_make_8dot3_name_emptyext():
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename.", fde)
-    assert "THIS IS    " == lfn
+    assert "THISIS" == lfn
     assert sfn.is_8dot3_conform(lfn)
 
 
@@ -128,12 +129,12 @@ def test_make_8dot3_name_collision():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
     fde_sub = mock.MagicMock()
-    fde_sub.get_short_name.side_effect = ["THIS IS .TXT", "THIS I~1.TXT",
-                                          "THIS I~2.TXT"]
+    fde_sub.get_short_name.side_effect = ["THISIS.TXT", "THISIS~1.TXT",
+                                          "THISIS~2.TXT"]
     fde.get_entries.return_value = ([fde_sub, fde_sub], [fde_sub], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename.txt", fde)
-    assert "THIS I~3TXT" == lfn
+    assert "THISIS~3.TXT" == lfn
     assert sfn.is_8dot3_conform(lfn)
 
 
@@ -145,13 +146,3 @@ def test_is_8dot3_conform_true():
 def test_is_8dot3_conform_false():
     """Test that non-8.3 file names are correctly detected."""
     assert not EightDotThree.is_8dot3_conform("This is a Long file.txt")
-
-
-def test_is_8dot3_conform_noext_true():
-    """Test that 8.3 file names without extension are correctly detected."""
-    assert EightDotThree.is_8dot3_conform("88888888333")
-
-
-def test_is_8dot3_conform_noext_false():
-    """Test that 8.3 file names without extension are correctly detected."""
-    assert not EightDotThree.is_8dot3_conform("88888888333_")

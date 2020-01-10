@@ -29,6 +29,10 @@ class EightDotThree:
     #: Length of the byte representation in a directory entry header
     SFN_LENGTH = 11
 
+    #: Valid characters for 8.3 file names
+    VALID_CHARACTERS = f"{string.ascii_letters}{string.digits}" \
+                       "!#$%&'()-@^_`{}~"
+
     def __init__(self, encoding: str = FAT_OEM_ENCODING):
         """Offer 8DOT3 filename operation.
 
@@ -118,6 +122,21 @@ class EightDotThree:
         return chksum
 
     @staticmethod
+    def __check_characters(name: str) -> bool:
+        """Test if given string contains invalid chars for 8.3 names.
+
+        :param name: `str`: Filename to parse
+        :raises: `ValueError` if the given string contains invalid
+                 8.3 filename characters.
+        """
+        vc = EightDotThree.VALID_CHARACTERS
+        n = ''.join(filter(lambda x: x in vc, name))
+        if n != name:
+            raise ValueError(f"Invalid characters in string '{name}', "
+                             f"cannot be used as part of an 8.3 "
+                             f"conform file name.")
+
+    @staticmethod
     def is_8dot3_conform(entry_name: str):
         """Indicate conformance of given entries name to 8.3 standard.
 
@@ -130,12 +149,18 @@ class EightDotThree:
 
         root, ext = os.path.splitext(entry_name)
         ext = ext[1:]
-        if len(root) > 8 and len(ext) > 0:
+        if len(root) + len(ext) > 11:
             return False
-        elif len(ext) == 0 and len(root) > 11:
+        elif len(root) > 8 or len(ext) > 3:
             return False
-        elif len(ext) > 3:
-            return False
+
+        # Check for valid characters in both filename segments
+        for i in [root, ext]:
+            try:
+                EightDotThree.__check_characters(i)
+            except ValueError:
+                return False
+
         return True
 
     @staticmethod
@@ -152,7 +177,7 @@ class EightDotThree:
 
     @staticmethod
     def make_8dot3_name(dir_name: str,
-                        parent_dir_entry):
+                        parent_dir_entry) -> str:
         """Generate filename based on 8.3 rules out of a long file name.
 
         In 8.3 notation we try to use the first 6 characters and
@@ -173,22 +198,26 @@ class EightDotThree:
 
         extsep = "."
 
-        # Make filename ASCII-compliant
-        dir_name = ''.join(filter(lambda x: x in string.printable, dir_name))
-
         try:
-            basename = dir_name.upper().rsplit(".", 1)[0][0:8]
+            # Shorten to 8 chars; strip invalid characters
+            basename = os.path.splitext(dir_name)[0][0:8].upper().strip()
+            basename = ''.join(filter(
+                lambda x: x in EightDotThree.VALID_CHARACTERS, basename))
         except IndexError:
             basename = ""
 
         try:
-            extname = dir_name.upper().rsplit(".", 1)[1][0:3]
+            # Shorten to 3 chars; strip invalid characters
+            extname = os.path.splitext(dir_name)[1][1:4].upper().strip()
+            extname = ''.join(filter(
+                lambda x: x in EightDotThree.VALID_CHARACTERS, extname))
         except IndexError:
             extname = ""
 
         if len(extname) == 0:
             extsep = ""
 
+        # Loop until suiting name is found
         i = 0
         while len(str(i)) + 1 <= 7:
             if i > 0:
@@ -198,7 +227,6 @@ class EightDotThree:
             short_name = f"{basename}{extsep}{extname}"
 
             if short_name not in dir_entries:
-                short_name = EightDotThree._pad_8dot3_name(short_name)
                 return short_name
             i += 1
 
