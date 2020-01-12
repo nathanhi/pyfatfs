@@ -115,13 +115,3 @@ contribution to pyfat just run
     $ python setup.py test
 
 from your shell.
-
-
-Contribute
-----------
-
-Feel free to contribute improvements to this package via mail or pull request.
-
-The preferred method of development is a test driven approach and following
-the nvie git flow branching model. Please be so kind to bear these things in
-mind when handing in improvements. Thank you very much.
