@@ -811,16 +811,15 @@ class PyFat(object):
 
     def __verify_fat12_header(self):
         """Verify FAT12/16 header for correctness."""
-        if self.fat_type == self.FAT_TYPE_FAT12 and self.fat_header[
-            "BS_FilSysType"] not in [self.FS_TYPES[self.FAT_TYPE_UNKNOWN],
-                                     self.FS_TYPES[self.FAT_TYPE_FAT12]]:
-            raise PyFATException("Invalid filesystem type \'{}\' "
-                                 "for FAT12".format(self.fat_type))
-        elif self.fat_type == self.FAT_TYPE_FAT16 and self.fat_header[
-            "BS_FilSysType"] not in [self.FS_TYPES[self.FAT_TYPE_UNKNOWN],
-                                     self.FS_TYPES[self.FAT_TYPE_FAT16]]:
-            raise PyFATException("Invalid filesystem type \'{}\' "
-                                 "for FAT16".format(self.fat_type))
+        # 38      Extended signature (0x29)
+        #         Indicates that the three following fields are present.
+        #         Windows NT recognizes either 0x28 or 0x29.
+        if self.fat_header["BS_BootSig"] in (0x28, 0x29):
+            bs_filsystype = self.fat_header["BS_FilSysType"]
+            if bs_filsystype not in (self.FS_TYPES[self.FAT_TYPE_UNKNOWN], self.FS_TYPES[self.fat_type]):
+                raise PyFATException(
+                    "BS_FilSysType contains {!r}, unexpected for FAT{}".format(bs_filsystype, self.fat_type)
+                )
 
         if self.fat_header["BPB_DrvNum"] not in [0x00, 0x80]:
             raise PyFATException("Invalid drive number \'"
