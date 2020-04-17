@@ -831,7 +831,7 @@ class PyFat(object):
                 raise PyFATException("BS_FilSysType contains {!r}, unexpected "
                                      "for FAT{}".format(bs_filsystype,
                                                         self.fat_type))
-        elif bs_bootsig not in (0x28, 0x00):
+        elif bs_bootsig not in (0x28, 0x00, 0x2a):
             raise PyFATException("Invalid FAT extended boot signature value "
                                  "encountered: '{}'".format(hex(bs_bootsig)))
 
