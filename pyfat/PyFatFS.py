@@ -40,7 +40,7 @@ class PyFatFS(FS):
         """
         super(PyFatFS, self).__init__()
         self.preserve_case = preserve_case
-        self.fs = PyFat(encoding=encoding, offset=offset)
+        self.fs = PyFat(encoding=encoding, offset=int(offset))
         self.fs.open(filename, read_only=read_only)
 
     def close(self):
