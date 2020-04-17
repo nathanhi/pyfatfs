@@ -259,39 +259,47 @@ class PyFat(object):
         # FAT16: 16 bits (2 bytes) per FAT entry
         # FAT32: 32 bits (4 bytes) per FAT entry
         fat_entry_size = self.fat_type / 8
-        total_entries = fat_size // int(fat_entry_size)
+        total_entries = int(fat_size // fat_entry_size)
         self.fat = [None] * total_entries
 
         curr = 0
         cluster = 0
-        incr = -(-self.fat_type // 8)
+        incr = self.fat_type / 8
         while curr < fat_size:
-            offset = int(curr + incr)
+            offset = curr + incr
 
             if self.fat_type == self.FAT_TYPE_FAT12:
-                if curr == (fat_size-1):
+                if math.ceil(offset) == (fat_size - 1):
                     # Sector boundary case for FAT12
                     del self.fat[-1]
                     break
 
-                self.fat[cluster] = struct.unpack("<H", fats[0][curr:offset])[0]
-                if curr % 2 == 0:
-                    # Even: Only fetch low 12 bits
+                self.fat[cluster] = struct.unpack("<H",
+                                                  fats[0][int(curr):
+                                                          math.ceil(offset)])[0]
+
+                if cluster % 2 == 0:
+                    # Even: Keep low 12-bits of word
                     self.fat[cluster] &= 0x0FFF
                 else:
-                    # Odd: Only fetch high 12 bits
+                    # Odd: Keep high 12-bits of word
                     self.fat[cluster] >>= 4
+
             elif self.fat_type == self.FAT_TYPE_FAT16:
-                self.fat[cluster] = struct.unpack("<H", fats[0][curr:offset])[0]
+                self.fat[cluster] = struct.unpack("<H",
+                                                  fats[0][int(curr):
+                                                          int(offset)])[0]
             elif self.fat_type == self.FAT_TYPE_FAT32:
-                self.fat[cluster] = struct.unpack("<L", fats[0][curr:offset])[0]
+                self.fat[cluster] = struct.unpack("<L",
+                                                  fats[0][int(curr):
+                                                          int(offset)])[0]
                 # Ignore first four bits, FAT32 clusters are
                 # actually just 28bits long
                 self.fat[cluster] &= 0x0FFFFFFF
             else:
                 raise PyFATException("Unknown FAT type, cannot continue")
 
-            curr += int(fat_entry_size)
+            curr += incr
             cluster += 1
 
         if None in self.fat:
