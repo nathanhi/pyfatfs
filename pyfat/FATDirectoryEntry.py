@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Directory entry operations with PyFAT."""
-
+import posixpath
 import struct
 
 from pyfat.EightDotThree import EightDotThree
@@ -197,15 +197,23 @@ class FATDirectoryEntry(object):
 
         return self._parent._get_parent_dir(sd)
 
-    def get_parent_dir(self):
+    def get_full_path(self):
         """Iterate all parents up and join them by "/"."""
         parent_dirs = [self.__repr__()]
 
         if self._parent is None:
-            return "/".join(list(reversed(parent_dirs)))
+            return "/"
 
-        return "/".join(list(reversed(
+        return posixpath.join(list(reversed(
             self._parent._get_parent_dir(parent_dirs))))
+
+    def get_parent_dir(self):
+        """Returns the parent directory entry."""
+        if self._parent is None:
+            raise PyFATException("Cannot query parent directory of "
+                                 "root directory", errno=errno.ENOENT)
+
+        return self._parent
 
     def is_special(self):
         """Determine if dir entry is a dot or dotdot entry.
@@ -343,7 +351,7 @@ class FATDirectoryEntry(object):
         :returns: tuple: root (current path, full),
                          dirs (all dirs), files (all files)
         """
-        root = self.get_parent_dir()
+        root = self.get_full_path()
         dirs, files, _ = self.get_entries()
 
         yield root, dirs, files
@@ -371,13 +379,17 @@ class FATDirectoryEntry(object):
         dir_entry._add_parent(self)
         self.__dirs.add(dir_entry)
 
-    def remove_subdirectory(self, name):
-        """Remove given dir_entry from dir list."""
-        # Check if current dir entry is even a directory!
-        self._verify_is_directory()
+    def remove_dir_entry(self, name):
+        """Remove given dir_entry from dir list.
+
+        **NOTE:** This will also remove special entries such
+        as ».«, »..« and volume labels!
+
+        """
+        d, f, s = self.get_entries()
 
         # Iterate all entries
-        for dir_entry in self.__dirs:
+        for dir_entry in d + f + s:
             sn = dir_entry.get_short_name()
             try:
                 ln = dir_entry.get_long_name()

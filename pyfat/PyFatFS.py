@@ -2,13 +2,14 @@
 
 """PyFilesystem2 implementation of PyFAT."""
 
+import posixpath
 import errno
 
 from fs.base import FS
 from fs.permissions import Permissions
 from fs.info import Info
 from fs.errors import DirectoryExpected, DirectoryExists, \
-    ResourceNotFound, FileExpected, DirectoryNotEmpty
+    ResourceNotFound, FileExpected, DirectoryNotEmpty, RemoveRootError
 from fs import ResourceType
 
 from pyfat import FAT_OEM_ENCODING
@@ -155,8 +156,11 @@ class PyFatFS(FS):
         except ResourceNotFound:
             pass
         else:
-            # TODO: Implement recreate param
-            raise DirectoryExists(path)
+            if not recreate:
+                raise DirectoryExists(path)
+            else:
+                # TODO: Update mtime
+                return
 
         parent_is_root = base == self.fs.root_dir
 
@@ -236,26 +240,82 @@ class PyFatFS(FS):
 
         :param path: `str`: Directory to remove
         """
-        base = "/".join(path.split("/")[:-1])
-        dirname = path.split("/")[-1]
-
-        # Plausability checks
-        try:
-            base = self.opendir(base)
-        except DirectoryExpected:
-            raise ResourceNotFound(path)
-
         dir_entry = self._get_dir_entry(path)
-        # Verify if the directory is empty
-        if not dir_entry.is_empty():
-            raise DirectoryNotEmpty(path)
+        try:
+            base = dir_entry.get_parent_dir()
+        except PyFATException as e:
+            if e.errno == errno.ENOENT:
+                # Don't remove root directory
+                raise RemoveRootError(path)
+            raise e
 
+        # Verify if the directory is empty
+        try:
+            if not dir_entry.is_empty():
+                raise DirectoryNotEmpty(path)
+        except PyFATException as e:
+            if e.errno == errno.ENOTDIR:
+                raise DirectoryExpected(path)
+
+        self._remove(base, dir_entry)
+
+    def removetree(self, dir_path: str):
+        """Recursively remove the contents of a directory.
+
+        :param dir_path: ``str``: Path to a directory on the filesystem.
+        """
+        dir_entry = self._get_dir_entry(dir_path)
+
+        if not dir_entry.is_directory():
+            raise DirectoryExpected(dir_path)
+
+        dirs, files, _ = dir_entry.get_entries()
+
+        for f in files:
+            self._remove(dir_entry, f)
+
+        for d in dirs:
+            self.removetree(posixpath.join(dir_path, str(d)))
+
+        return self.removedir(dir_path)
+
+    def remove(self, path: str):
+        """Remove a file from the filesystem.
+
+        :param path: `str`: Path of file to remove
+        """
+        dir_entry = self._get_dir_entry(path)
+
+        # Check for file
+        if dir_entry.is_directory() or dir_entry.is_special():
+            raise FileExpected(path)
+
+        base = dir_entry.get_parent_dir()
+        self._remove(base, dir_entry)
+
+    def _remove(self, parent_dir: FATDirectoryEntry,
+                dir_entry: FATDirectoryEntry):
+        """Removes a directory entry regardless of type (dir or file)
+
+        **NOTE:** This will not recursively remove directories, thus
+        leave allocated clusters behind unless the directory has been
+        purged before. Also, there is no check for special files such as
+        volume labels, ».« and »..« entries. So it might leave the filesystem
+        in a broken state if used incorrectly.
+
+        :param parent_dir: ``FATDirectoryEntry``: Parent directory
+        :param dir_entry: ``FATDirectoryEntry``: Directory entry to remove
+        :raises PyFATException: ``ENOENT`` if given dir entry does not exist
+                                in ``parent_dir``
+        """
         # Remove entry from parent directory
-        base.remove_subdirectory(dirname)
-        self.fs.update_directory_entry(base)
+        parent_dir.remove_dir_entry(str(dir_entry))
+        self.fs.update_directory_entry(parent_dir)
 
         # Free cluster in FAT
-        self.fs.free_cluster_chain(dir_entry.get_cluster())
+        if dir_entry.get_size() > 0 and dir_entry.get_cluster() != 0:
+            # Empty files have a cluster ID of 0
+            self.fs.free_cluster_chain(dir_entry.get_cluster())
         del dir_entry
 
     def openbin(self, path: str, mode: str = "r",
@@ -306,10 +366,6 @@ class PyFatFS(FS):
             raise DirectoryExpected(path)
 
         return dir_entry
-
-    def remove(self, path: str):
-        """Not yet implemented."""
-        print("remove")
 
     def setinfo(self, path: str, info):
         """Not yet implemented."""

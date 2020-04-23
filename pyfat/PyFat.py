@@ -349,10 +349,11 @@ class PyFat(object):
 
         :param cluster: `int`: Cluster to mark as free
         """
-        for cl in self.get_cluster_chain(cluster):
-            self.fat[cl] = self.FAT_CLUSTER_VALUES[self.fat_type]['FREE_CLUSTER']
-
-        self.flush_fat()
+        with self.__lock:
+            tmp_fat = self.fat.copy()
+            for cl in self.get_cluster_chain(cluster):
+                tmp_fat[cl] = self.FAT_CLUSTER_VALUES[self.fat_type]['FREE_CLUSTER']
+            self.fat = tmp_fat
 
     @_init_check
     @_readonly_check
@@ -546,7 +547,7 @@ class PyFat(object):
     def parse_root_dir(self):
         """Parses root directory entry."""
         root_dir_sfn = EightDotThree()
-        root_dir_sfn.set_str_name("ROOTDIR")
+        root_dir_sfn.set_str_name("")
         self.root_dir = FATDirectoryEntry(DIR_Name=root_dir_sfn,
                                           DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                           DIR_NTRes=0,
