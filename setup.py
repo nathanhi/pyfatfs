@@ -17,7 +17,8 @@ except ImportError:
 
 def load_requirements(fname):
     reqs = parse_requirements(fname, session="test")
-    return [str(ir.req) for ir in reqs]
+    return [getattr(r, 'requirement',
+            str(getattr(r, 'req', None))) for r in reqs]
 
 def _get_attribute(name):
     """Get version information from __init__.py."""
