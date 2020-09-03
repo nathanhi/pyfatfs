@@ -269,11 +269,6 @@ class PyFat(object):
             offset = curr + incr
 
             if self.fat_type == self.FAT_TYPE_FAT12:
-                if math.ceil(offset) == (fat_size - 1):
-                    # Sector boundary case for FAT12
-                    del self.fat[-1]
-                    break
-
                 self.fat[cluster] = struct.unpack("<H",
                                                   fats[0][int(curr):
                                                           math.ceil(offset)])[0]
@@ -284,6 +279,11 @@ class PyFat(object):
                 else:
                     # Odd: Keep high 12-bits of word
                     self.fat[cluster] >>= 4
+
+                if math.ceil(offset) == (fat_size - 1):
+                    # Sector boundary case for FAT12
+                    del self.fat[-1]
+                    break
 
             elif self.fat_type == self.FAT_TYPE_FAT16:
                 self.fat[cluster] = struct.unpack("<H",
