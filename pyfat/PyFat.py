@@ -829,9 +829,8 @@ class PyFat(object):
             bs_filsystype = self.fat_header["BS_FilSysType"]
             if bs_filsystype not in (self.FS_TYPES[self.FAT_TYPE_UNKNOWN],
                                      self.FS_TYPES[self.fat_type]):
-                raise PyFATException("BS_FilSysType contains {!r}, unexpected "
-                                     "for FAT{}".format(bs_filsystype,
-                                                        self.fat_type))
+                print(f"BS_FilSysType contains {bs_filsystype}, unexpected "
+                      f"for FAT{self.fat_type}")
         elif bs_bootsig not in (0x28, 0x00, 0x2a):
             raise PyFATException("Invalid FAT extended boot signature value "
                                  "encountered: '{}'".format(hex(bs_bootsig)))
