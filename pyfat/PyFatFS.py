@@ -183,7 +183,8 @@ class PyFatFS(FS):
                                    encoding=self.fs.encoding)
 
         # Create LFN entry if required
-        if short_name.get_unpadded_filename() != dirname:
+        _sfn = short_name.get_unpadded_filename()
+        if _sfn != dirname.upper() or self.preserve_case:
             lfn_entry = make_lfn_entry(dirname, short_name)
             newdir.set_lfn_entry(lfn_entry)
 
