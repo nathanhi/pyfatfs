@@ -418,7 +418,7 @@ class PyFat(object):
 
     @_init_check
     @_readonly_check
-    def allocate_bytes(self, size: int, erase: bool = False):
+    def allocate_bytes(self, size: int, erase: bool = False) -> list:
         """Try to allocate a cluster (-chain) in FAT for `size` bytes.
 
         :param size: `int`: Size in bytes to try to allocate.

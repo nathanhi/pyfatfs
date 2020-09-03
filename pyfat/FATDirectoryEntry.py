@@ -136,6 +136,13 @@ class FATDirectoryEntry(object):
 
         return self.filesize
 
+    def set_size(self, size: int = 0):
+        """Set filesize.
+
+        :param size: `int`: File size in bytes
+        """
+        self.filesize = size
+
     def get_cluster(self):
         """Get cluster address of directory entry.
 

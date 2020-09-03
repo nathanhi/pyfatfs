@@ -4,6 +4,7 @@
 import errno
 import io
 import threading
+from typing import Union, Optional
 
 from fs.mode import Mode
 
@@ -49,9 +50,9 @@ class FatIO(io.RawIOBase):
                f'path="{self.name}" ' \
                f'mode="{self.mode}"'
 
-    def close(self) -> None:
-        """Close open file handles assuming lock handle."""
-        raise NotImplementedError()
+    #def close(self) -> None:
+    #    """Close open file handles assuming lock handle."""
+    #    raise NotImplementedError()
 
     def readable(self) -> bool:
         """Determine whether or not the file is readable."""
@@ -77,3 +78,25 @@ class FatIO(io.RawIOBase):
             chunks.append(chunk)
 
         return b"".join(chunks)
+
+    def writable(self) -> bool:
+        """Determine whether or not the file is writable."""
+        if not self.dir_entry.is_read_only():
+            return self.mode.writing
+        return False
+
+    def write(self, __b: Union[bytes, bytearray]) -> Optional[int]:
+        """Write given bytes to file."""
+        sz = len(__b)
+
+        # Allocate cluster chain if needed
+        cluster = self.dir_entry.get_cluster()
+        if cluster == 0:
+            cluster = self.fs.allocate_bytes(sz)[0]
+
+        self.fs.write_data_to_cluster(__b, cluster)
+        self.dir_entry.set_size(sz)
+        self.dir_entry.set_cluster(cluster)
+
+        self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
+        self.fs.flush_fat()
