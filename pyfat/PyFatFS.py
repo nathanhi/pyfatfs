@@ -134,6 +134,65 @@ class PyFatFS(FS):
         dirs, files, _ = dir_entry.get_entries()
         return [str(e) for e in dirs+files]
 
+    def create(self, path: str, wipe: bool = False) -> bool:
+        """Create a new file.
+
+        :param path: Path of new file on filesystem
+        :param wipe: Overwrite existing file contents
+        """
+        basename = "/".join(path.split("/")[:-1])
+        dirname = path.split("/")[-1]
+
+        # Plausability checks
+        try:
+            base = self.opendir(basename)
+        except DirectoryExpected:
+            raise ResourceNotFound(path)
+
+        try:
+            self._get_dir_entry(path)
+        except ResourceNotFound:
+            pass
+        else:
+            if not wipe:
+                return False
+            else:
+                # TODO: Reuse dir entry instead
+                self.remove(path)
+                base = self.opendir(basename)
+
+        # Determine 8DOT3 file name + LFN
+        short_name = EightDotThree()
+        n = short_name.make_8dot3_name(dirname, base)
+        short_name.set_str_name(n)
+
+        newdir = FATDirectoryEntry(DIR_Name=short_name,
+                                   DIR_Attr=0,
+                                   DIR_NTRes=0,
+                                   DIR_CrtTimeTenth=0,
+                                   DIR_CrtDateTenth=0,
+                                   DIR_LstAccessDate=0,
+                                   DIR_FstClusHI=0x00,
+                                   DIR_WrtTime=0,
+                                   DIR_WrtDate=0,
+                                   DIR_FstClusLO=0x00,
+                                   DIR_FileSize=0,
+                                   encoding=self.fs.encoding)
+
+        # Create LFN entry if required
+        _sfn = short_name.get_unpadded_filename()
+        if _sfn != dirname.upper() or self.preserve_case:
+            lfn_entry = make_lfn_entry(dirname, short_name)
+            newdir.set_lfn_entry(lfn_entry)
+
+        # Write reference to parent directory
+        base.add_subdirectory(newdir)
+        self.fs.update_directory_entry(base)
+
+        # Flush FAT(s) to disk
+        self.fs.flush_fat()
+        return True
+
     def makedir(self, path: str, permissions: Permissions = None,
                 recreate: bool = False):
         """Create directory on filesystem.
