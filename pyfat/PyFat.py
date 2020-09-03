@@ -843,21 +843,25 @@ class PyFat(object):
         elif self.bpb_header["BS_jmpBoot"][0] == 0xE9:
             pass
         else:
-            raise PyFATException("Boot code must start with 0xEB or 0xE9. Is this a FAT partition?")
+            raise PyFATException("Boot code must start with 0xEB or "
+                                 "0xE9. Is this a FAT partition?")
 
-        if self.bpb_header["BPB_BytsPerSec"] not in [2**x for x in range(9, 13)]:
-            raise PyFATException("Expected one of {} bytes per sector, got: "
-                                 "\'{}\'.".format([2**x for x in range(9, 13)],
-                                                  self.bpb_header[
-                                                      "BPB_BytsPerSec"]))
+        #: 512,1024,2048,4096: As per fatgen103.doc
+        byts_per_sec_range = [2**x for x in range(9, 13)]
+        if self.bpb_header["BPB_BytsPerSec"] not in byts_per_sec_range:
+            raise PyFATException(f"Expected one of {byts_per_sec_range} "
+                                 f"bytes per sector, got: "
+                                 f"\'{self.bpb_header['BPB_BytsPerSec']}\'.")
 
-        if self.bpb_header["BPB_SecPerClus"] not in [2**x for x in range(8)]:
-            raise PyFATException("Expected one of {} sectors per cluster, got"
-                                 ": \'{}\'.".format([2**x for x in range(8)],
-                                                    self.bpb_header[
-                                                        "BPB_SecPerClus"]))
+        #: 1,2,4,8,16,32,64,128: As per fatgen103.doc
+        sec_per_clus_range = [2**x for x in range(8)]
+        if self.bpb_header["BPB_SecPerClus"] not in sec_per_clus_range:
+            raise PyFATException(f"Expected one of {sec_per_clus_range} "
+                                 f"sectors per cluster, got: "
+                                 f"\'{self.bpb_header['BPB_SecPerClus']}\'.")
 
-        bytes_per_cluster = self.bpb_header["BPB_BytsPerSec"] * self.bpb_header["BPB_SecPerClus"]
+        bytes_per_cluster = self.bpb_header["BPB_BytsPerSec"]
+        bytes_per_cluster *= self.bpb_header["BPB_SecPerClus"]
         if bytes_per_cluster > 32768:
             warnings.warn("Bytes per cluster should not be more than 32K, "
                           "but got: {}K. Trying to continue "
@@ -873,12 +877,14 @@ class PyFat(object):
         if self.bpb_header["BPB_NumFATS"] < 1:
             raise PyFATException("At least one FAT expected, None found.")
 
-        root_entry_count = (self.bpb_header["BPB_RootEntCnt"] * 32) % self.bpb_header["BPB_BytsPerSec"]
+        root_entry_count = self.bpb_header["BPB_RootEntCnt"] * 32
+        root_entry_count %= self.bpb_header["BPB_BytsPerSec"]
         if self.bpb_header["BPB_RootEntCnt"] != 0 and root_entry_count != 0:
             raise PyFATException("Root entry count does not cleanly align with"
                                  " bytes per sector!")
 
-        if self.bpb_header["BPB_TotSec16"] == 0 and self.bpb_header["BPB_TotSec32"] == 0:
+        if self.bpb_header["BPB_TotSec16"] == 0 and \
+                self.bpb_header["BPB_TotSec32"] == 0:
             raise PyFATException("16-Bit and 32-Bit total sector count "
                                  "value empty.")
 
