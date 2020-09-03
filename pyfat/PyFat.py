@@ -244,8 +244,8 @@ class PyFat(object):
             raise PyFATException("Invalid number of FATs configured, "
                                  "cannot continue")
         elif len(set(fats)) > 1:
-            raise PyFATException("One or more FATs differ, filesystem most "
-                                 "likely corrupted")
+            warnings.warn("One or more FATs differ, filesystem most "
+                          "likely corrupted. Using first FAT.")
 
         # Parse first FAT
         self.bytes_per_cluster = self.bpb_header["BPB_BytsPerSec"] * \
