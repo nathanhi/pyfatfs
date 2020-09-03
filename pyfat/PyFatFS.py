@@ -150,16 +150,19 @@ class PyFatFS(FS):
             raise ResourceNotFound(path)
 
         try:
-            self._get_dir_entry(path)
+            dentry = self._get_dir_entry(path)
         except ResourceNotFound:
             pass
         else:
             if not wipe:
                 return False
             else:
-                # TODO: Reuse dir entry instead
-                self.remove(path)
-                base = self.opendir(basename)
+                # Clean up existing file contents
+                # TODO: touch {a,m}time
+                old_cluster = dentry.get_cluster()
+                dentry.set_cluster(0)
+                self.fs.free_cluster_chain(old_cluster)
+                return True
 
         # Determine 8DOT3 file name + LFN
         short_name = EightDotThree()
