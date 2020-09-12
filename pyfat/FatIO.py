@@ -74,7 +74,7 @@ class FatIO(io.RawIOBase):
             raise ValueError(f"Invalid whence {whence}, should be 0, 1 or 2")
 
         old_bpos = self.__bpos
-        old_cluster_count = self.__bpos // self.fs.bytes_per_cluster
+        old_cluster_count = old_bpos // self.fs.bytes_per_cluster
         cluster_count = offset // self.fs.bytes_per_cluster
         self.__coffpos = offset % self.fs.bytes_per_cluster
         self.__bpos = offset
@@ -155,7 +155,10 @@ class FatIO(io.RawIOBase):
         """Write given bytes to file."""
         sz = len(__b)
         cluster = self.dir_entry.get_cluster()
-        if cluster == 0:
+        if sz == 0:
+            # Nothing to do
+            return sz
+        elif cluster == 0:
             # Allocate new cluster chain if needed
             cluster = self.fs.allocate_bytes(sz)[0]
             self.dir_entry.set_cluster(cluster)
