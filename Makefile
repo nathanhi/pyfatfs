@@ -19,7 +19,7 @@ make_venv: $(VENV_DIR) $(VENV_DIR)/install.indicator
 
 # Generate requirements
 requirements/%.txt: requirements/in/%.in
-	$(VENV_DIR)/bin/pip-compile --header --annotate --upgrade --generate-hashes --output-file $@ $<
+	$(VENV_DIR)/bin/pip-compile --header --annotate --upgrade --output-file $@ $<
 
 .PHONY: update_requirements
 update_requirements: make_venv requirements/install.txt requirements/tasks.txt requirements/test.txt
