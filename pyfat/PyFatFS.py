@@ -184,7 +184,7 @@ class PyFatFS(FS):
 
         # Create LFN entry if required
         _sfn = short_name.get_unpadded_filename()
-        if _sfn != dirname.upper() or self.preserve_case:
+        if _sfn != dirname.upper() or (_sfn != dirname and self.preserve_case):
             lfn_entry = make_lfn_entry(dirname, short_name)
             newdir.set_lfn_entry(lfn_entry)
 
@@ -391,6 +391,8 @@ class PyFatFS(FS):
         returns: `BinaryIO` stream
         """
         path = self.validatepath(path)
+        if 'w' in mode:
+            self.create(path)
 
         try:
             info = self.getinfo(path)

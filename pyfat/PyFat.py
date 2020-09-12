@@ -402,8 +402,7 @@ class PyFat(object):
             b = self.get_data_cluster_address(c)
             t = bytes_written
             bytes_written += self.bytes_per_cluster
-            self._write_data_to_address(data[t:bytes_written],
-                                        b)
+            self._write_data_to_address(data[t:bytes_written], b)
 
     @_init_check
     @_readonly_check
