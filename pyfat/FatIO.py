@@ -73,18 +73,12 @@ class FatIO(io.RawIOBase):
         elif whence != 0:
             raise ValueError(f"Invalid whence {whence}, should be 0, 1 or 2")
 
-        old_bpos = self.__bpos
-        old_cluster_count = old_bpos // self.fs.bytes_per_cluster
         cluster_count = offset // self.fs.bytes_per_cluster
         self.__coffpos = offset % self.fs.bytes_per_cluster
         self.__bpos = offset
+        self.__fp = self.fs.get_cluster_chain(self.dir_entry.get_cluster())
 
-        if old_bpos > self.__bpos:
-            # Reset iterator if we have to seek back
-            self.__fp = self.fs.get_cluster_chain(self.dir_entry.get_cluster())
-            old_cluster_count = 0
-
-        for _ in range(old_cluster_count, cluster_count):
+        for _ in range(0, cluster_count):
             self.__cpos = next(self.__fp)
 
         return self.__bpos
@@ -121,7 +115,6 @@ class FatIO(io.RawIOBase):
         chunks = []
         read_bytes = 0
         cluster_offset = self.__coffpos
-        last_cluster = self.__cpos
         for c in self.__fp:
             chunk_size = self.fs.bytes_per_cluster - cluster_offset
             # Do not read past EOF
@@ -133,14 +126,10 @@ class FatIO(io.RawIOBase):
             cluster_offset = 0
             chunks.append(chunk)
             read_bytes += chunk_size
-            last_cluster = c
             if read_bytes == size:
                 break
 
-        # Manually seek, we already touched the __fp generator
-        self.__bpos += read_bytes
-        self.__cpos = last_cluster
-        self.__coffpos = read_bytes % self.fs.bytes_per_cluster
+        self.seek(read_bytes, 1)
 
         chunks = b"".join(chunks)
         if len(chunks) != size:
@@ -180,13 +169,7 @@ class FatIO(io.RawIOBase):
                                       f'bpos: {self.__bpos}')
 
         self.fs.write_data_to_cluster(__b, cluster)
-
-        # Seek after write
-        self.__fp = self.fs.get_cluster_chain(cluster)
         self.dir_entry.filesize += sz
-        self.__cpos = cluster
-        self.__coffpos = (self.__bpos + sz) % self.fs.bytes_per_cluster
-        self.__bpos += sz
-
+        self.seek(0, 2)
         self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return sz
