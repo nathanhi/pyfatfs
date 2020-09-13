@@ -184,7 +184,9 @@ class FatIO(io.RawIOBase):
         # Seek after write
         self.__fp = self.fs.get_cluster_chain(cluster)
         self.dir_entry.filesize += sz
-        self.seek(self.dir_entry.filesize)
+        self.__cpos = cluster
+        self.__coffpos = (self.__bpos + sz) % self.fs.bytes_per_cluster
+        self.__bpos += sz
 
         self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return sz
