@@ -100,6 +100,7 @@ class FatIO(io.RawIOBase):
         """Close open file handles assuming lock handle."""
         self.seek(0)
         self.fs.flush_fat()
+        super().close()
 
     def readable(self) -> bool:
         """Determine whether or not the file is readable."""
