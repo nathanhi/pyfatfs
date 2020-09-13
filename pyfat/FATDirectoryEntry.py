@@ -12,7 +12,7 @@ from pyfat import FAT_OEM_ENCODING, FAT_LFN_ENCODING
 import errno
 
 
-class FATDirectoryEntry(object):
+class FATDirectoryEntry:
     """Represents directory entries in FAT (files & directories)."""
 
     #: Bit set in DIR_Attr if entry is read-only

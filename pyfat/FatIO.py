@@ -82,6 +82,7 @@ class FatIO(io.RawIOBase):
         if old_bpos > self.__bpos:
             # Reset iterator if we have to seek back
             self.__fp = self.fs.get_cluster_chain(self.dir_entry.get_cluster())
+            old_cluster_count = 0
 
         for _ in range(old_cluster_count, cluster_count):
             self.__cpos = next(self.__fp)
