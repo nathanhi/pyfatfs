@@ -76,7 +76,12 @@ class PyFatFS(FS):
         :param namespaces: Info namespaces to query, `NotImplemented`
         :returns `Info`
         """
-        entry = self.fs.root_dir.get_entry(path)
+        try:
+            entry = self.fs.root_dir.get_entry(path)
+        except PyFATException as e:
+            if e.errno in [errno.ENOTDIR, errno.ENOENT]:
+                raise ResourceNotFound(path)
+            raise e
         info = {"basic": {"name": repr(entry),
                           "is_dir": entry.is_directory()},
                 "details": {"accessed": NotImplemented,
