@@ -149,7 +149,7 @@ class FatIO(io.RawIOBase):
 
     def writable(self) -> bool:
         """Determine whether or not the file is writable."""
-        if not self.dir_entry.is_read_only():
+        if not self.dir_entry.is_read_only() and not self.fs.is_read_only:
             return self.mode.writing
         return False
 
