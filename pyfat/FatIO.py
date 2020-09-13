@@ -77,6 +77,7 @@ class FatIO(io.RawIOBase):
         self.__coffpos = offset % self.fs.bytes_per_cluster
         self.__bpos = offset
         self.__fp = self.fs.get_cluster_chain(self.dir_entry.get_cluster())
+        self.__cpos = self.dir_entry.get_cluster()
 
         for _ in range(0, cluster_count):
             self.__cpos = next(self.__fp)
