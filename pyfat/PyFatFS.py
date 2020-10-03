@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """PyFilesystem2 implementation of PyFAT."""
-
+import datetime
 import posixpath
 import errno
 
@@ -13,6 +13,7 @@ from fs.errors import DirectoryExpected, DirectoryExists, \
 from fs import ResourceType
 
 from pyfat import FAT_OEM_ENCODING
+from pyfat.DosDateTime import DosDateTime
 from pyfat.PyFat import PyFat
 from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_lfn_entry
 from pyfat._exceptions import PyFATException
@@ -25,7 +26,7 @@ class PyFatFS(FS):
 
     def __init__(self, filename: str, encoding: str = FAT_OEM_ENCODING,
                  offset: int = 0, preserve_case: bool = True,
-                 read_only: bool = False):
+                 read_only: bool = False, utc: bool = True):
         """PyFilesystem2 FAT constructor, initializes self.fs.
 
         :param filename: `str`: Name of file/device to open as FAT partition.
@@ -38,11 +39,19 @@ class PyFatFS(FS):
                               casing does not conform to 8DOT3.
         :param read_only: `bool`: If set to true, the filesystem is mounted
                           in read-only mode, not allowing any modifications.
+        :param utc: `bool`: Store timestamps in UTC rather than the local time.
+                    This applies to dentry creation, modification and last
+                    access time.
         """
         super(PyFatFS, self).__init__()
         self.preserve_case = preserve_case
         self.fs = PyFat(encoding=encoding, offset=int(offset))
         self.fs.open(filename, read_only=read_only)
+
+        if utc:
+            self.tz = datetime.timezone.utc
+        else:
+            self.tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
 
     def close(self):
         """Clean up open handles."""
@@ -174,15 +183,18 @@ class PyFatFS(FS):
         n = short_name.make_8dot3_name(dirname, base)
         short_name.set_str_name(n)
 
+        dt = DosDateTime.now(tz=self.tz)
+
         newdir = FATDirectoryEntry(DIR_Name=short_name,
                                    DIR_Attr=0,
                                    DIR_NTRes=0,
                                    DIR_CrtTimeTenth=0,
-                                   DIR_CrtDateTenth=0,
-                                   DIR_LstAccessDate=0,
+                                   DIR_CrtTime=dt.serialize_time(),
+                                   DIR_CrtDate=dt.serialize_date(),
+                                   DIR_LstAccessDate=dt.serialize_date(),
                                    DIR_FstClusHI=0x00,
-                                   DIR_WrtTime=0,
-                                   DIR_WrtDate=0,
+                                   DIR_WrtTime=dt.serialize_time(),
+                                   DIR_WrtDate=dt.serialize_date(),
                                    DIR_FstClusLO=0x00,
                                    DIR_FileSize=0,
                                    encoding=self.fs.encoding)
@@ -236,15 +248,18 @@ class PyFatFS(FS):
         n = short_name.make_8dot3_name(dirname, base)
         short_name.set_str_name(n)
 
+        dt = DosDateTime.now(tz=self.tz)
+
         newdir = FATDirectoryEntry(DIR_Name=short_name,
                                    DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                    DIR_NTRes=0,
                                    DIR_CrtTimeTenth=0,
-                                   DIR_CrtDateTenth=0,
-                                   DIR_LstAccessDate=0,
+                                   DIR_CrtTime=dt.serialize_time(),
+                                   DIR_CrtDate=dt.serialize_date(),
+                                   DIR_LstAccessDate=dt.serialize_date(),
                                    DIR_FstClusHI=0x00,
-                                   DIR_WrtTime=0,
-                                   DIR_WrtDate=0,
+                                   DIR_WrtTime=dt.serialize_time(),
+                                   DIR_WrtDate=dt.serialize_date(),
                                    DIR_FstClusLO=0x00,
                                    DIR_FileSize=0,
                                    encoding=self.fs.encoding)
@@ -266,7 +281,8 @@ class PyFatFS(FS):
                                 DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                 DIR_NTRes=newdir.ntres,
                                 DIR_CrtTimeTenth=newdir.crttimetenth,
-                                DIR_CrtDateTenth=newdir.crtdatetenth,
+                                DIR_CrtTime=newdir.crttime,
+                                DIR_CrtDate=newdir.crtdate,
                                 DIR_LstAccessDate=newdir.lstaccessdate,
                                 DIR_FstClusHI=newdir.fstclushi,
                                 DIR_WrtTime=newdir.wrttime,
@@ -282,7 +298,8 @@ class PyFatFS(FS):
                                    DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
                                    DIR_NTRes=base.ntres,
                                    DIR_CrtTimeTenth=base.crttimetenth,
-                                   DIR_CrtDateTenth=base.crtdatetenth,
+                                   DIR_CrtTime=base.crttime,
+                                   DIR_CrtDate=base.crtdate,
                                    DIR_LstAccessDate=base.lstaccessdate,
                                    DIR_FstClusHI=base_fstclushi,
                                    DIR_WrtTime=base.wrttime,

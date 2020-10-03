@@ -97,11 +97,23 @@ read_only
 Open filesystem in read-only mode and thus don't allow writes/modifications.
 This defaults to false but can be enabled by setting read_only to true:
 
-.. code-clock:: python
+.. code-block:: python
 
    import fs
    my_fs = fs.open_fs("fat:///dev/sda1?read_only=true")
 
+
+utc
+^^^
+
+Create all timestamps on the filesystem in UTC time rather than local time.
+Affects all directory entries' creation, modification and access times. This
+defaults to true but can be disabled by setting utc to false:
+
+.. code-block:: python
+
+    import fs
+    my_fs = fs.open_fs("fat:///dev/sda1?utc=false")
 
 
 Testing

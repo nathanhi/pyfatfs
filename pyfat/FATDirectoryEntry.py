@@ -35,18 +35,19 @@ class FATDirectoryEntry:
         ATTR_VOLUME_ID | ATTR_DIRECTORY | ATTR_ARCHIVE
 
     #: Directory entry header layout in struct formatted string
-    FAT_DIRECTORY_LAYOUT = "<11sBHHHHHHHHL"
+    FAT_DIRECTORY_LAYOUT = "<11sBBBHHHHHHHL"
     #: Size of a directory entry header in bytes
     FAT_DIRECTORY_HEADER_SIZE = struct.calcsize(FAT_DIRECTORY_LAYOUT)
     #: Directory entry headers
     FAT_DIRECTORY_VARS = ["DIR_Name", "DIR_Attr", "DIR_NTRes",
-                          "DIR_CrtTimeTenth", "DIR_CrtDateTenth",
-                          "DIR_LstAccessDate", "DIR_FstClusHI",
-                          "DIR_WrtTime", "DIR_WrtDate",
-                          "DIR_FstClusLO", "DIR_FileSize"]
+                          "DIR_CrtTimeTenth", "DIR_CrtTime",
+                          "DIR_CrtDate", "DIR_LstAccessDate",
+                          "DIR_FstClusHI", "DIR_WrtTime",
+                          "DIR_WrtDate", "DIR_FstClusLO",
+                          "DIR_FileSize"]
 
-    def __init__(self, DIR_Name, DIR_Attr, DIR_NTRes,
-                 DIR_CrtTimeTenth, DIR_CrtDateTenth, DIR_LstAccessDate,
+    def __init__(self, DIR_Name, DIR_Attr, DIR_NTRes, DIR_CrtTimeTenth,
+                 DIR_CrtTime, DIR_CrtDate, DIR_LstAccessDate,
                  DIR_FstClusHI, DIR_WrtTime, DIR_WrtDate, DIR_FstClusLO,
                  DIR_FileSize, encoding: str = FAT_OEM_ENCODING,
                  lfn_entry=None):
@@ -55,8 +56,9 @@ class FATDirectoryEntry:
         :param DIR_Name: `EightDotThree` class instance
         :param DIR_Attr: Attributes of directory
         :param DIR_NTRes: Reserved attributes of directory entry
-        :param DIR_CrtTimeTenth: Creation timestamp of entry
-        :param DIR_CrtDateTenth: Creation date of entry
+        :param DIR_CrtTimeTenth: Milliseconds at file creation
+        :param DIR_CrtTime: Creation timestamp of entry
+        :param DIR_CrtDate: Creation date of entry
         :param DIR_LstAccessDate: Last access date of entry
         :param DIR_FstClusHI: High cluster value of entry data
         :param DIR_WrtTime: Modification timestamp of entry
@@ -70,7 +72,8 @@ class FATDirectoryEntry:
         self.attr = int(DIR_Attr)
         self.ntres = int(DIR_NTRes)
         self.crttimetenth = int(DIR_CrtTimeTenth)
-        self.crtdatetenth = int(DIR_CrtDateTenth)
+        self.crttime = int(DIR_CrtTime)
+        self.crtdate = int(DIR_CrtDate)
         self.lstaccessdate = int(DIR_LstAccessDate)
         self.fstclushi = int(DIR_FstClusHI)
         self.wrttime = int(DIR_WrtTime)
@@ -171,9 +174,10 @@ class FATDirectoryEntry:
             entry += self.lfn_entry.byte_repr()
 
         entry += struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr,
-                             self.ntres, self.crttimetenth, self.crtdatetenth,
-                             self.lstaccessdate, self.fstclushi, self.wrttime,
-                             self.wrtdate, self.fstcluslo, self.filesize)
+                             self.ntres, self.crttimetenth, self.crttime,
+                             self.crtdate, self.lstaccessdate,
+                             self.fstclushi, self.wrttime, self.wrtdate,
+                             self.fstcluslo, self.filesize)
 
         return entry
 
