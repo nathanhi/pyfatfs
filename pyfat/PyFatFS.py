@@ -91,12 +91,13 @@ class PyFatFS(FS):
             if e.errno in [errno.ENOTDIR, errno.ENOENT]:
                 raise ResourceNotFound(path)
             raise e
+
         info = {"basic": {"name": repr(entry),
                           "is_dir": entry.is_directory()},
-                "details": {"accessed": NotImplemented,
-                            "created": NotImplemented,
+                "details": {"accessed": entry.get_atime(),
+                            "created": entry.get_ctime(),
                             "metadata_changed": None,
-                            "modified": NotImplemented,
+                            "modified": entry.get_mtime(),
                             "size": entry.filesize,
                             "type": self.gettype(path)}}
         return Info(info)

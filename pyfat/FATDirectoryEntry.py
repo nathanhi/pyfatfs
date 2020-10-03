@@ -4,6 +4,7 @@
 import posixpath
 import struct
 
+from pyfat.DosDateTime import DosDateTime
 from pyfat.EightDotThree import EightDotThree
 from pyfat._exceptions import PyFATException, NotAnLFNEntryException,\
     BrokenLFNEntryException
@@ -89,6 +90,22 @@ class FATDirectoryEntry:
 
         self.__dirs = set()
         self.__encoding = encoding
+
+    def get_ctime(self) -> DosDateTime:
+        """Get dentry creation time."""
+        return self.__combine_dosdatetime(self.crtdate, self.crttime)
+
+    def get_mtime(self) -> DosDateTime:
+        return self.__combine_dosdatetime(self.wrtdate, self.wrttime)
+
+    def get_atime(self) -> DosDateTime:
+        return DosDateTime.deserialize_date(self.lstaccessdate)
+
+    @staticmethod
+    def __combine_dosdatetime(dt, tm) -> DosDateTime:
+        dt = DosDateTime.deserialize_date(dt)
+        dt.combine(dt, DosDateTime.deserialize_time(tm))
+        return dt
 
     def get_checksum(self) -> int:
         """Get calculated checksum of this directory entry.
