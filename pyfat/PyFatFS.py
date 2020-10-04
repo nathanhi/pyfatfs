@@ -94,10 +94,10 @@ class PyFatFS(FS):
 
         info = {"basic": {"name": repr(entry),
                           "is_dir": entry.is_directory()},
-                "details": {"accessed": entry.get_atime(),
-                            "created": entry.get_ctime(),
+                "details": {"accessed": entry.get_atime().timestamp(),
+                            "created": entry.get_ctime().timestamp(),
                             "metadata_changed": None,
-                            "modified": entry.get_mtime(),
+                            "modified": entry.get_mtime().timestamp(),
                             "size": entry.filesize,
                             "type": self.gettype(path)}}
         return Info(info)
@@ -457,4 +457,22 @@ class PyFatFS(FS):
 
     def setinfo(self, path: str, info):
         """Not yet implemented."""
-        print("setinfo")
+        details = info.get('details', {})
+        dentry = self._get_dir_entry(path)
+
+        ctime = details.get("created")
+        mtime = details.get("modified")
+        atime = details.get("accessed")
+        if ctime:
+            ctime = DosDateTime.fromtimestamp(ctime, tz=self.tz)
+            dentry.crttime = ctime.serialize_time()
+            dentry.crtdate = ctime.serialize_date()
+        if mtime:
+            mtime = DosDateTime.fromtimestamp(mtime, tz=self.tz)
+            dentry.wrttime = mtime.serialize_time()
+            dentry.wrtdate = mtime.serialize_date()
+        if atime:
+            atime = DosDateTime.fromtimestamp(atime, tz=self.tz)
+            dentry.lstaccessdate = atime.serialize_date()
+
+        self.fs.write_data_to_cluster(dentry.byte_repr(), dentry.get_cluster())
