@@ -73,6 +73,8 @@ class FatIO(io.RawIOBase):
         elif whence != 0:
             raise ValueError(f"Invalid whence {whence}, should be 0, 1 or 2")
 
+        offset = min(offset, self.dir_entry.filesize)
+
         cluster_count = offset // self.fs.bytes_per_cluster
         self.__coffpos = offset % self.fs.bytes_per_cluster
         self.__bpos = offset
