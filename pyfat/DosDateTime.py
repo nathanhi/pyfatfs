@@ -4,7 +4,18 @@
 from datetime import datetime, time
 
 
+def _convert_to_dos_date(func):
+    """Decorator to convert datetime to DosDateTime"""
+    def _wrapper(*args, **kwargs) -> "DosDateTime":
+        date: datetime = func(*args, **kwargs)
+        return DosDateTime(*date.timetuple()[:6])
+    return _wrapper
+
+
 class DosDateTime(datetime):
+    now = _convert_to_dos_date(datetime.now)
+    fromtimestamp = _convert_to_dos_date(datetime.fromtimestamp)
+
     """DOS-specific date/time format serialization."""
     def serialize_date(self) -> int:
         """Convert current datetime to FAT date."""
