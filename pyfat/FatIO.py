@@ -111,7 +111,7 @@ class FatIO(io.RawIOBase):
             size = self.dir_entry.filesize - self.__bpos
 
         if size == 0:
-            return None
+            return b""
 
         chunks = []
         read_bytes = 0
@@ -120,7 +120,7 @@ class FatIO(io.RawIOBase):
             chunk_size = self.fs.bytes_per_cluster - cluster_offset
             # Do not read past EOF
             if read_bytes + chunk_size > size:
-                chunk_size = size - read_bytes - cluster_offset
+                chunk_size = size - read_bytes
 
             chunk = self.fs.read_cluster_contents(c)
             chunk = chunk[cluster_offset:][:chunk_size]
