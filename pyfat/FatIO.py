@@ -46,6 +46,9 @@ class FatIO(io.RawIOBase):
         #: Handle to cluster chain iterator
         self.__fp = self.fs.get_cluster_chain(self.__cpos)
 
+        if self.mode.appending:
+            self.seek(0, 2)
+
     def __repr__(self) -> str:
         """Readable representation of class instance.
 
