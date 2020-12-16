@@ -22,6 +22,9 @@ class DosDateTime(datetime):
         day = dt & ((1 << 5) - 1)
         month = (dt >> 5) & ((1 << 4) - 1)
         year = ((dt >> 9) & (1 << 8) - 1) + 1980
+        # Sanitize the date in case of invalid timestamps (such as zero timestamp)
+        day = max(day, 1)
+        month = max(month, 1)
         return DosDateTime(year, month, day)
 
     @staticmethod
