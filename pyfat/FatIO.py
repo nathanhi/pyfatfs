@@ -159,23 +159,22 @@ class FatIO(io.RawIOBase):
             # Allocate new cluster chain if needed
             cluster = self.fs.allocate_bytes(sz)[0]
             self.dir_entry.set_cluster(cluster)
-        elif self.__bpos == self.dir_entry.filesize:
-            # Concatenate and rewrite last cluster
-            __coffpos = self.__coffpos
-            if self.__coffpos == 0:
-                __coffpos = self.fs.bytes_per_cluster
-            cluster = self.__cpos
-            cluster_data = self.fs.read_cluster_contents(cluster)
-            cluster_data = cluster_data[0:__coffpos]
-            __b = cluster_data + __b
         else:
-            raise NotImplementedError('Unable to modify file contents at the '
-                                      'moment.\n'
-                                      f'filesize: {self.dir_entry.filesize}'
-                                      f'bpos: {self.__bpos}')
+            # Get the current cluster and rewrite
+            __coffpos = self.__coffpos
+            if self.__bpos == self.dir_entry.filesize and self.__coffpos == 0:
+                # New cluster required - concatenate to last cluster
+                __coffpos = self.fs.bytes_per_cluster
+                cluster = self.__cpos
+            else:
+                cluster = next(self.__fp)
+            if __coffpos != 0:
+                cluster_data = self.fs.read_cluster_contents(cluster)
+                __b = cluster_data[0:__coffpos] + __b
 
         self.fs.write_data_to_cluster(__b, cluster)
-        self.dir_entry.filesize += sz
-        self.seek(0, 2)
+        if self.__bpos + sz > self.dir_entry.filesize:
+            self.dir_entry.filesize = self.__bpos + sz
+        self.seek(sz, 1)
         self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return sz
