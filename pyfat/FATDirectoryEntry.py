@@ -156,7 +156,7 @@ class FATDirectoryEntry:
 
         return self.filesize
 
-    def set_size(self, size: int = 0):
+    def set_size(self, size: int):
         """Set filesize.
 
         :param size: `int`: File size in bytes

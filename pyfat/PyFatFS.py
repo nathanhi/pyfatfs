@@ -182,6 +182,7 @@ class PyFatFS(FS):
             else:
                 # Clean up existing file contents
                 # TODO: touch {a,m}time
+                dentry.set_size(0)
                 old_cluster = dentry.get_cluster()
                 dentry.set_cluster(0)
                 self.fs.free_cluster_chain(old_cluster)
