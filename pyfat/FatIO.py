@@ -25,7 +25,7 @@ class FatIO(io.RawIOBase):
         :param mode: `Mode`: Mode to open file in.
         """
         super(FatIO, self).__init__()
-        self.mode = Mode(mode)
+        self.mode = mode
         self.fs = fs
         self.name = str(path)
         # TODO: File locking

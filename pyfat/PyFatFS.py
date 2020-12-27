@@ -418,7 +418,15 @@ class PyFatFS(FS):
         returns: `BinaryIO` stream
         """
         path = self.validatepath(path)
-        if 'w' in mode:
+        mode = Mode(mode)
+        if mode.create:
+            if mode.exclusive:
+                try:
+                    self.getinfo(path)
+                except ResourceNotFound:
+                    pass
+                else:
+                    raise FileExists(path)
             self.create(path)
 
         try:
