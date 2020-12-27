@@ -128,7 +128,12 @@ class PyFatFS(FS):
         :param path: Path to file or directory on filesystem
         :returns Size in bytes as `int`
         """
-        entry = self.fs.root_dir.get_entry(path)
+        try:
+            entry = self.fs.root_dir.get_entry(path)
+        except PyFATException as e:
+            if e.errno == errno.ENOENT:
+                raise ResourceNotFound(path)
+            raise e
         return entry.filesize
 
     def gettype(self, path: str):
