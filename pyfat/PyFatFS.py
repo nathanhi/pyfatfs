@@ -6,10 +6,13 @@ import posixpath
 import errno
 
 from fs.base import FS
+from fs.mode import Mode
+from fs.path import split, normpath
 from fs.permissions import Permissions
 from fs.info import Info
 from fs.errors import DirectoryExpected, DirectoryExists, \
-    ResourceNotFound, FileExpected, DirectoryNotEmpty, RemoveRootError
+    ResourceNotFound, FileExpected, DirectoryNotEmpty, RemoveRootError, \
+    FileExists
 from fs import ResourceType
 
 from pyfat import FAT_OEM_ENCODING
@@ -222,8 +225,9 @@ class PyFatFS(FS):
         :param permissions: Currently not implemented
         :param recreate: Ignore if directory already exists
         """
-        base = "/".join(path.split("/")[:-1])
-        dirname = path.split("/")[-1]
+        path = normpath(path)
+        base = split(path)[0]
+        dirname = split(path)[1]
 
         # Plausability checks
         try:
@@ -433,9 +437,9 @@ class PyFatFS(FS):
         :param path: `str`: Path on the filesystem
         :returns: `FATDirectoryEntry`
         """
-        path = self.validatepath(path)
+        _path = normpath(self.validatepath(path))
         try:
-            dir_entry = self.fs.root_dir.get_entry(path)
+            dir_entry = self.fs.root_dir.get_entry(_path)
         except PyFATException as e:
             if e.errno == errno.ENOENT:
                 raise ResourceNotFound(path)
