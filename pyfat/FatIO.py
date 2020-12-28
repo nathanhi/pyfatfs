@@ -178,3 +178,21 @@ class FatIO(io.RawIOBase):
         self.seek(sz, 1)
         self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return sz
+
+    def truncate(self, __size: Optional[int] = 0) -> int:
+        __size = __size if __size != 0 else self.__fp.tell()
+
+        # Truncate cluster chain
+        num_clusters = self.fs.calc_num_clusters(__size)
+        i = 0
+        for c in self.fs.get_cluster_chain(self.dir_entry.get_cluster()):
+            i += 1
+            if i <= num_clusters:
+                continue
+            self.fs.free_cluster_chain(c)
+            self.fs.flush_fat()
+            break
+
+        # Update file size
+        self.dir_entry.set_size(__size)
+        return __size

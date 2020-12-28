@@ -415,6 +415,17 @@ class PyFat(object):
                 self.__seek(first_fat_bytes + (i * fat_size))
                 self.__fp.write(self.byte_repr())
 
+    def calc_num_clusters(self, size: int = 0) -> int:
+        """Calculate the number of required clusters.
+
+        :param size: `int`: required bytes to allocate
+        :returns: Number of required clusters
+        """
+        num_clusters = size / self.bytes_per_cluster
+        num_clusters = math.ceil(num_clusters)
+
+        return num_clusters
+
     @_init_check
     @_readonly_check
     def allocate_bytes(self, size: int, erase: bool = False) -> list:
@@ -425,10 +436,7 @@ class PyFat(object):
                               space is zeroed-out for clean allocation.
         :returns: List of newly-allocated clusters.
         """
-
-        # Calculate number of clusters required for file
-        num_clusters = size / self.bytes_per_cluster
-        num_clusters = math.ceil(num_clusters)
+        num_clusters = self.calc_num_clusters(size)
 
         # Fill list of found free clusters
         free_clusters = []
