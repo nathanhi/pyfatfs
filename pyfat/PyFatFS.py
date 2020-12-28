@@ -114,7 +114,7 @@ class PyFatFS(FS):
         :returns `dict` with file system meta data
         """
         if namespace != u'standard':
-            return None
+            return {}
 
         return {"case_insensitive": not self.preserve_case,
                 "invalid_path_chars": "\0",
