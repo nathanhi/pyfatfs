@@ -184,16 +184,20 @@ class FatIO(io.RawIOBase):
         self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return sz
 
-    def truncate(self, __size: Optional[int] = 0) -> int:
+    def truncate(self, size: Optional[int] = 0) -> int:
         """Truncate file to given size.
 
-        :param __size: `int`: Size to truncate to, defaults to 0.
+        :param size: `int`: Size to truncate to, defaults to 0.
         :returns: `int`: Truncated size
         """
-        __size = __size if __size != 0 else self.__fp.tell()
+        size = size if size is not None else self.tell()
+
+        if size > self.dir_entry.get_size():
+            # TODO: Extend file and null it
+            raise NotImplementedError
 
         # Truncate cluster chain
-        num_clusters = self.fs.calc_num_clusters(__size)
+        num_clusters = self.fs.calc_num_clusters(size)
         i = 0
         for c in self.fs.get_cluster_chain(self.dir_entry.get_cluster()):
             i += 1
@@ -204,5 +208,8 @@ class FatIO(io.RawIOBase):
             break
 
         # Update file size
-        self.dir_entry.set_size(__size)
-        return __size
+        self.dir_entry.set_size(size)
+        #self.fs.write_data_to_cluster(self.dir_entry.byte_repr(),
+        #                              self.dir_entry.get_cluster(),
+        #                              extend_cluster=False)
+        return size

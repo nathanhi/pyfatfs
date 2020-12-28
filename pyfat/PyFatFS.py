@@ -488,7 +488,7 @@ class PyFatFS(FS):
         return SubFS(self, path)
 
     def setinfo(self, path: str, info):
-        """Not yet implemented."""
+        """Not yet properly implemented."""
         details = info.get('details', {})
         dentry = self._get_dir_entry(path)
 
