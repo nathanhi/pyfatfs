@@ -151,6 +151,10 @@ class FatIO(io.RawIOBase):
 
     def write(self, __b: Union[bytes, bytearray]) -> Optional[int]:
         """Write given bytes to file."""
+
+        if not self.writable():
+            raise IOError('Cannot write to read-only file!')
+
         sz = len(__b)
         cluster = self.dir_entry.get_cluster()
         if sz == 0:
