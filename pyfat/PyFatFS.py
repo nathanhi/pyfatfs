@@ -435,6 +435,8 @@ class PyFatFS(FS):
                 else:
                     raise FileExists(path)
             self.create(path)
+        if "t" in mode:
+            raise ValueError('Text-mode not allowed in openbin')
 
         try:
             info = self.getinfo(path)
