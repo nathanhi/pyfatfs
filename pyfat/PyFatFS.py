@@ -54,7 +54,8 @@ class PyFatFS(FS):
         if utc:
             self.tz = datetime.timezone.utc
         else:
-            self.tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+            self.tz = datetime.datetime.now(datetime.timezone.utc)
+            self.tz = self.tz.astimezone().tzinfo
 
     def close(self):
         """Clean up open handles."""
@@ -392,7 +393,7 @@ class PyFatFS(FS):
 
     def _remove(self, parent_dir: FATDirectoryEntry,
                 dir_entry: FATDirectoryEntry):
-        """Removes a directory entry regardless of type (dir or file)
+        """Remove directory entry regardless of type (dir or file).
 
         **NOTE:** This will not recursively remove directories, thus
         leave allocated clusters behind unless the directory has been

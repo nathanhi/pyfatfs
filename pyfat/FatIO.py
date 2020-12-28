@@ -90,7 +90,7 @@ class FatIO(io.RawIOBase):
         return self.__bpos
 
     def seekable(self) -> bool:
-        """Defines that the FAT I/O driver is able to seek in files.
+        """FAT I/O driver is able to seek in files.
 
         :returns `True`
         """
@@ -139,7 +139,8 @@ class FatIO(io.RawIOBase):
 
         chunks = b"".join(chunks)
         if len(chunks) != size:
-            raise RuntimeError(f"Read a different amount of data than was requested.")
+            raise RuntimeError("Read a different amount of data "
+                               "than was requested.")
         return chunks
 
     def writable(self) -> bool:
@@ -180,6 +181,11 @@ class FatIO(io.RawIOBase):
         return sz
 
     def truncate(self, __size: Optional[int] = 0) -> int:
+        """Truncate file to given size.
+
+        :param __size: `int`: Size to truncate to, defaults to 0.
+        :returns: `int`: Truncated size
+        """
         __size = __size if __size != 0 else self.__fp.tell()
 
         # Truncate cluster chain

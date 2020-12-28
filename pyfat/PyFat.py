@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+"""FAT and BPB parsing for files."""
+
 import errno
 import itertools
 
@@ -45,6 +48,7 @@ def _readonly_check(func):
 
 class PyFat(object):
     """PyFAT base class, parses generic filesystem information."""
+
     #: Used as fat_type if unable to detect FAT type
     FAT_TYPE_UNKNOWN = 0
     #: Used as fat_type if FAT12 fs has been detected
@@ -123,7 +127,8 @@ class PyFat(object):
     def __init__(self,
                  encoding: str = 'ibm437',
                  offset: int = 0):
-        """PyFAT main class.
+        """Set up PyFat class instance.
+
         :param encoding: Define encoding to use for filenames
         :param offset: Offset of the FAT partition in the given file
         :type encoding: str
@@ -230,10 +235,12 @@ class PyFat(object):
     def _parse_fat(self):
         """Parse information in FAT."""
         # Read all FATs
-        fat_size = self.bpb_header["BPB_BytsPerSec"] * self._get_fat_size_count()
+        fat_size = self.bpb_header["BPB_BytsPerSec"]
+        fat_size *= self._get_fat_size_count()
 
         # Seek FAT entries
-        first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"] * self.bpb_header["BPB_BytsPerSec"]
+        first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"]
+        first_fat_bytes *= self.bpb_header["BPB_BytsPerSec"]
         fats = []
         for i in range(self.bpb_header["BPB_NumFATS"]):
             with self.__lock:
@@ -269,9 +276,8 @@ class PyFat(object):
             offset = curr + incr
 
             if self.fat_type == self.FAT_TYPE_FAT12:
-                self.fat[cluster] = struct.unpack("<H",
-                                                  fats[0][int(curr):
-                                                          math.ceil(offset)])[0]
+                fat_nibble = fats[0][int(curr):math.ceil(offset)]
+                self.fat[cluster] = struct.unpack("<H", fat_nibble)[0]
 
                 if cluster % 2 == 0:
                     # Even: Keep low 12-bits of word
@@ -349,10 +355,11 @@ class PyFat(object):
 
         :param cluster: `int`: Cluster to mark as free
         """
+        _freeclus = self.FAT_CLUSTER_VALUES[self.fat_type]['FREE_CLUSTER']
         with self.__lock:
             tmp_fat = self.fat.copy()
             for cl in self.get_cluster_chain(cluster):
-                tmp_fat[cl] = self.FAT_CLUSTER_VALUES[self.fat_type]['FREE_CLUSTER']
+                tmp_fat[cl] = _freeclus
             self.fat = tmp_fat
 
     @_init_check
@@ -408,8 +415,12 @@ class PyFat(object):
     @_readonly_check
     def flush_fat(self) -> None:
         """Flush FAT(s) to disk."""
-        fat_size = self.bpb_header["BPB_BytsPerSec"] * self._get_fat_size_count()
-        first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"] * self.bpb_header["BPB_BytsPerSec"]
+        fat_size = self.bpb_header["BPB_BytsPerSec"]
+        fat_size *= self._get_fat_size_count()
+
+        first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"]
+        first_fat_bytes *= self.bpb_header["BPB_BytsPerSec"]
+
         for i in range(self.bpb_header["BPB_NumFATS"]):
             with self.__lock:
                 self.__seek(first_fat_bytes + (i * fat_size))
@@ -526,7 +537,8 @@ class PyFat(object):
             self._write_data_to_address(dir_entries, root_dir_addr)
 
     def _fat12_parse_root_dir(self):
-        """Parses the FAT12/16 root dir entries.
+        """Parse FAT12/16 root dir entries.
+
         FAT12/16 has a fixed location of root directory entries
         and is therefore size limited (BPB_RootEntCnt).
         """
@@ -540,7 +552,8 @@ class PyFat(object):
             self.root_dir.add_subdirectory(dir_entry)
 
     def _fat32_parse_root_dir(self):
-        """Parses the FAT32 root dir entries.
+        """Parse FAT32 root dir entries.
+
         FAT32 actually has its root directory entries distributed
         across a cluster chain that we need to follow
         """
@@ -552,7 +565,7 @@ class PyFat(object):
             self.root_dir.add_subdirectory(dir_entry)
 
     def parse_root_dir(self):
-        """Parses root directory entry."""
+        """Parse root directory entry."""
         root_dir_sfn = EightDotThree()
         root_dir_sfn.set_str_name("")
         self.root_dir = FATDirectoryEntry(DIR_Name=root_dir_sfn,
@@ -604,7 +617,7 @@ class PyFat(object):
                                      address: int = 0,
                                      max_address: int = 0,
                                      tmp_lfn_entry: FATLongDirectoryEntry = FATLongDirectoryEntry()):
-        """Parses directory entries in address range."""
+        """Parse directory entries in address range."""
         dir_hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         if max_address == 0:
@@ -658,7 +671,7 @@ class PyFat(object):
         return dir_entries, tmp_lfn_entry
 
     def parse_dir_entries_in_cluster_chain(self, cluster):
-        """Parses directory entries while following given cluster chain."""
+        """Parse directory entries while following given cluster chain."""
         dir_entries = []
         tmp_lfn_entry = FATLongDirectoryEntry()
         max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
@@ -728,12 +741,14 @@ class PyFat(object):
             pass
 
     def __determine_fat_type(self):
-        """Determine FAT size
+        """Determine FAT size.
 
-        An internal method to determine whether this volume is FAT12, FAT16
-        or FAT32
+        An internal method to determine whether this volume is FAT12,
+        FAT16 or FAT32.
+
+        returns: `str`: Any of PyFat.FAT_TYPE_FAT12, PyFat.FAT_TYPE_FAT16
+                 or PyFat.FAT_TYPE_FAT32
         """
-
         if self.bpb_header["BPB_TotSec16"] != 0:
             total_sectors = self.bpb_header["BPB_TotSec16"]
         else:
@@ -755,7 +770,7 @@ class PyFat(object):
         return fat_type
 
     def __parse_fat12_header(self):
-        """Parse FAT12/16 header"""
+        """Parse FAT12/16 header."""
         with self.__lock:
             self.__seek(0)
             boot_sector = self.__fp.read(512)
@@ -775,6 +790,7 @@ class PyFat(object):
         self.fat_header = dict(zip(self.fat32_header_vars, header))
 
     def parse_header(self):
+        """Parse BPB & FAT headers in opened file."""
         with self.__lock:
             self.__seek(0)
             boot_sector = self.__fp.read(512)

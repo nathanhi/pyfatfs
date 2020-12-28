@@ -5,7 +5,7 @@ from datetime import datetime, time
 
 
 def _convert_to_dos_date(func):
-    """Decorator to convert datetime to DosDateTime"""
+    """Convert datetime to DosDateTime."""
     def _wrapper(*args, **kwargs) -> "DosDateTime":
         date: datetime = func(*args, **kwargs)
         return DosDateTime(*date.timetuple()[:6])
@@ -13,10 +13,11 @@ def _convert_to_dos_date(func):
 
 
 class DosDateTime(datetime):
+    """DOS-specific date/time format serialization."""
+
     now = _convert_to_dos_date(datetime.now)
     fromtimestamp = _convert_to_dos_date(datetime.fromtimestamp)
 
-    """DOS-specific date/time format serialization."""
     def serialize_date(self) -> int:
         """Convert current datetime to FAT date."""
         date = self.year - 1980 << 9 | self.month << 5 | self.day
@@ -24,7 +25,8 @@ class DosDateTime(datetime):
 
     def serialize_time(self) -> int:
         """Convert current datetime to FAT time."""
-        time = self.hour << 11 | self.minute << 5 | ((self.second - (self.second % 2)) // 2)
+        time = self.hour << 11 | self.minute << 5
+        time |= ((self.second - (self.second % 2)) // 2)
         return time
 
     @staticmethod
@@ -33,10 +35,11 @@ class DosDateTime(datetime):
         day = dt & ((1 << 5) - 1)
         month = (dt >> 5) & ((1 << 4) - 1)
         year = ((dt >> 9) & (1 << 8) - 1) + 1980
-        # Sanitize the date in case of invalid timestamps (such as zero timestamp)
-        day = max(day, 1)
-        month = max(month, 1)
-        return DosDateTime(year, month, day)
+
+        try:
+            return DosDateTime(year, month, day)
+        except ValueError:
+            return DosDateTime(1980, 1, 1)
 
     @staticmethod
     def deserialize_time(tm: int) -> time:

@@ -199,7 +199,7 @@ class EightDotThree:
         extsep = "."
 
         def map_chars(char: chr) -> chr:
-            """Map 8DOT3 valid characters
+            """Map 8DOT3 valid characters.
 
             :param char: `str`: input character
             :returns: `str`: mapped output character

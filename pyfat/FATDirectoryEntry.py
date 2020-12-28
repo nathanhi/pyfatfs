@@ -96,9 +96,11 @@ class FATDirectoryEntry:
         return self.__combine_dosdatetime(self.crtdate, self.crttime)
 
     def get_mtime(self) -> DosDateTime:
+        """Get dentry modification time."""
         return self.__combine_dosdatetime(self.wrtdate, self.wrttime)
 
     def get_atime(self) -> DosDateTime:
+        """Get dentry access time."""
         return DosDateTime.deserialize_date(self.lstaccessdate)
 
     @staticmethod
@@ -236,7 +238,7 @@ class FATDirectoryEntry:
             self._parent._get_parent_dir(parent_dirs))))
 
     def get_parent_dir(self):
-        """Returns the parent directory entry."""
+        """Get the parent directory entry."""
         if self._parent is None:
             raise PyFATException("Cannot query parent directory of "
                                  "root directory", errno=errno.ENOENT)
