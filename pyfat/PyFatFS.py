@@ -475,17 +475,19 @@ class PyFatFS(FS):
 
         return dir_entry
 
-    def opendir(self, path: str) -> SubFS:
+    def opendir(self, path: str, factory=None) -> SubFS:
         """Get a filesystem object for a sub-directory.
 
         :param path: str: Path to a directory on the filesystem.
         """
+        factory = factory or self.subfs_class or SubFS
+
         dir_entry = self._get_dir_entry(path)
 
         if not dir_entry.is_directory():
             raise DirectoryExpected(path)
 
-        return SubFS(self, path)
+        return factory(self, path)
 
     def setinfo(self, path: str, info):
         """Not yet properly implemented."""
