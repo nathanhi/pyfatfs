@@ -209,7 +209,5 @@ class FatIO(io.RawIOBase):
 
         # Update file size
         self.dir_entry.set_size(size)
-        #self.fs.write_data_to_cluster(self.dir_entry.byte_repr(),
-        #                              self.dir_entry.get_cluster(),
-        #                              extend_cluster=False)
+        self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return size
