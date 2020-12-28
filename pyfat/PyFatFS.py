@@ -120,6 +120,7 @@ class PyFatFS(FS):
                 "max_sys_path": None,
                 "network": False,
                 "read_only": self.fs.is_read_only,
+                "unicode_paths": self.fs.encoding.lower().startswith('utf'),
                 "supports_rename": True}
 
     def getsize(self, path: str):

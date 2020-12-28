@@ -125,6 +125,16 @@ def test_make_8dot3_name_emptyext():
     assert sfn.is_8dot3_conform(lfn)
 
 
+def test_make_8dot3_name_unicode():
+    """Test that make_8dot3_filename generates valid 8dot3 filenames."""
+    fde = mock.MagicMock()
+    fde.get_entries.return_value = ([], [], [])
+    sfn = EightDotThree()
+    lfn = sfn.make_8dot3_name("🤷.🤷", fde)
+    assert "_._" == lfn
+    assert sfn.is_8dot3_conform(lfn)
+
+
 def test_make_8dot3_name_collision():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()

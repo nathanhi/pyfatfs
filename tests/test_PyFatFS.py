@@ -19,4 +19,4 @@ class TestPyFatFS16(FSTestCases, TestCase):
             with open(img_file, 'wb') as img:
                 img.write(imggz.read())
 
-        return PyFatFS(img_file)
+        return PyFatFS(img_file, encoding='UTF-8')

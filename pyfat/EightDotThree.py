@@ -30,7 +30,7 @@ class EightDotThree:
     SFN_LENGTH = 11
 
     #: Valid characters for 8.3 file names
-    VALID_CHARACTERS = f"{string.ascii_letters}{string.digits}" \
+    VALID_CHARACTERS = f"{string.ascii_letters.upper()}{string.digits}" \
                        "!#$%&'()-@^_`{}~"
 
     def __init__(self, encoding: str = FAT_OEM_ENCODING):
@@ -198,19 +198,30 @@ class EightDotThree:
 
         extsep = "."
 
+        def map_chars(char: chr) -> chr:
+            """Map 8DOT3 valid characters
+
+            :param char: `str`: input character
+            :returns: `str`: mapped output character
+            """
+            char = char.upper()
+            if char == ' ':
+                return ''
+            if char not in EightDotThree.VALID_CHARACTERS:
+                return '_'
+            return char
+
         try:
             # Shorten to 8 chars; strip invalid characters
-            basename = os.path.splitext(dir_name)[0][0:8].upper().strip()
-            basename = ''.join(filter(
-                lambda x: x in EightDotThree.VALID_CHARACTERS, basename))
+            basename = os.path.splitext(dir_name)[0][0:8].strip()
+            basename = ''.join(map(map_chars, basename))
         except IndexError:
             basename = ""
 
         try:
             # Shorten to 3 chars; strip invalid characters
-            extname = os.path.splitext(dir_name)[1][1:4].upper().strip()
-            extname = ''.join(filter(
-                lambda x: x in EightDotThree.VALID_CHARACTERS, extname))
+            extname = os.path.splitext(dir_name)[1][1:4].strip()
+            extname = ''.join(map(map_chars, extname))
         except IndexError:
             extname = ""
 
