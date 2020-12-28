@@ -14,6 +14,7 @@ from fs.errors import DirectoryExpected, DirectoryExists, \
     ResourceNotFound, FileExpected, DirectoryNotEmpty, RemoveRootError, \
     FileExists
 from fs import ResourceType
+from fs.subfs import SubFS
 
 from pyfat import FAT_OEM_ENCODING
 from pyfat.DosDateTime import DosDateTime
@@ -155,8 +156,13 @@ class PyFatFS(FS):
 
         :param path: Path to directory on filesystem
         """
-        dir_entry = self.opendir(path)
-        dirs, files, _ = dir_entry.get_entries()
+        dir_entry = self._get_dir_entry(path)
+        try:
+            dirs, files, _ = dir_entry.get_entries()
+        except PyFATException as e:
+            if e.errno == errno.ENOTDIR:
+                raise DirectoryExpected(path)
+            raise e
         return [str(e) for e in dirs+files]
 
     def create(self, path: str, wipe: bool = False) -> bool:
@@ -170,9 +176,10 @@ class PyFatFS(FS):
 
         # Plausability checks
         try:
-            base = self.opendir(basename)
+            self.opendir(basename)
         except DirectoryExpected:
             raise ResourceNotFound(path)
+        base = self._get_dir_entry(basename)
 
         try:
             dentry = self._get_dir_entry(path)
@@ -239,9 +246,10 @@ class PyFatFS(FS):
 
         # Plausability checks
         try:
-            base = self.opendir(base)
+            self.opendir(base)
         except DirectoryExpected:
             raise ResourceNotFound(path)
+        base = self._get_dir_entry(base)
 
         try:
             self._get_dir_entry(path)
@@ -252,7 +260,7 @@ class PyFatFS(FS):
                 raise DirectoryExists(path)
             else:
                 # TODO: Update mtime
-                return
+                return SubFS(self, path)
 
         parent_is_root = base == self.fs.root_dir
 
@@ -332,6 +340,8 @@ class PyFatFS(FS):
 
         # Flush FAT(s) to disk
         self.fs.flush_fat()
+
+        return SubFS(self, path)
 
     def removedir(self, path: str):
         """Remove empty directories from the filesystem.
@@ -465,7 +475,7 @@ class PyFatFS(FS):
 
         return dir_entry
 
-    def opendir(self, path: str) -> FATDirectoryEntry:
+    def opendir(self, path: str) -> SubFS:
         """Get a filesystem object for a sub-directory.
 
         :param path: str: Path to a directory on the filesystem.
@@ -475,7 +485,7 @@ class PyFatFS(FS):
         if not dir_entry.is_directory():
             raise DirectoryExpected(path)
 
-        return dir_entry
+        return SubFS(self, path)
 
     def setinfo(self, path: str, info):
         """Not yet implemented."""
