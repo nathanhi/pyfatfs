@@ -447,12 +447,15 @@ class PyFat(object):
                               space is zeroed-out for clean allocation.
         :returns: List of newly-allocated clusters.
         """
+        free_clus = self.FAT_CLUSTER_VALUES[self.fat_type]["FREE_CLUSTER"]
+        min_clus = self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"]
+        max_clus = self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]
         num_clusters = self.calc_num_clusters(size)
 
         # Fill list of found free clusters
         free_clusters = []
         for i, _ in enumerate(self.fat):
-            if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] > i > self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
+            if min_clus > i > max_clus:
                 # Ignore out of bound entries
                 continue
 
@@ -460,12 +463,13 @@ class PyFat(object):
                 # Allocated enough clusters!
                 break
 
-            if self.fat[i] == self.FAT_CLUSTER_VALUES[self.fat_type]["FREE_CLUSTER"]:
+            if self.fat[i] == free_clus:
                 if i == self.FAT_CLUSTER_VALUES[self.fat_type]["BAD_CLUSTER"]:
                     # Do not allocate a BAD_CLUSTER
                     continue
 
-                if self.fat_type == self.FAT_TYPE_FAT12 and i == self.FAT12_SPECIAL_EOC:
+                if self.fat_type == self.FAT_TYPE_FAT12 and \
+                        i == self.FAT12_SPECIAL_EOC:
                     # Do not allocate special EOC marker on FAT12
                     continue
 
@@ -477,11 +481,12 @@ class PyFat(object):
                                  errno=errno.ENOSPC)
 
         # Allocate cluster chain in FAT
+        eoc_max = self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]
         for i, _ in enumerate(free_clusters):
             try:
                 self.fat[free_clusters[i]] = free_clusters[i+1]
             except IndexError:
-                self.fat[free_clusters[i]] = self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]
+                self.fat[free_clusters[i]] = eoc_max
 
             if erase is True:
                 with self.__lock:
@@ -524,8 +529,10 @@ class PyFat(object):
                                        erase=True)
         else:
             # FAT12/16 does not have a root directory cluster
-            root_dir_addr = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
-            root_dir_sz = self.root_dir_sectors * self.bpb_header["BPB_BytsPerSec"]
+            root_dir_addr = self.root_dir_sector * \
+                self.bpb_header["BPB_BytsPerSec"]
+            root_dir_sz = self.root_dir_sectors * \
+                self.bpb_header["BPB_BytsPerSec"]
 
             if len(dir_entries) > root_dir_sz:
                 raise PyFATException("Cannot create directory, maximum number "
@@ -542,12 +549,17 @@ class PyFat(object):
         FAT12/16 has a fixed location of root directory entries
         and is therefore size limited (BPB_RootEntCnt).
         """
-        root_dir_byte = self.root_dir_sector * self.bpb_header["BPB_BytsPerSec"]
-        self.root_dir.set_cluster(self.root_dir_sector // self.bpb_header["BPB_SecPerClus"])
-        max_bytes = self.bpb_header["BPB_RootEntCnt"] * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+        root_dir_byte = self.root_dir_sector * \
+            self.bpb_header["BPB_BytsPerSec"]
+        self.root_dir.set_cluster(self.root_dir_sector //
+                                  self.bpb_header["BPB_SecPerClus"])
+        max_bytes = self.bpb_header["BPB_RootEntCnt"] * \
+            FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         # Parse all directory entries in root directory
-        subdirs, _ = self.parse_dir_entries_in_address(root_dir_byte, root_dir_byte + max_bytes)
+        subdirs, _ = self.parse_dir_entries_in_address(root_dir_byte,
+                                                       root_dir_byte +
+                                                       max_bytes)
         for dir_entry in subdirs:
             self.root_dir.add_subdirectory(dir_entry)
 
@@ -557,19 +569,20 @@ class PyFat(object):
         FAT32 actually has its root directory entries distributed
         across a cluster chain that we need to follow
         """
-        root_dir_cluster = self.fat_header["BPB_RootClus"]
-        self.root_dir.set_cluster(root_dir_cluster)
+        root_cluster = self.fat_header["BPB_RootClus"]
+        self.root_dir.set_cluster(root_cluster)
 
         # Follow root directory cluster chain
-        for dir_entry in self.parse_dir_entries_in_cluster_chain(root_dir_cluster):
+        for dir_entry in self.parse_dir_entries_in_cluster_chain(root_cluster):
             self.root_dir.add_subdirectory(dir_entry)
 
     def parse_root_dir(self):
         """Parse root directory entry."""
         root_dir_sfn = EightDotThree()
         root_dir_sfn.set_str_name("")
+        dir_attr = FATDirectoryEntry.ATTR_DIRECTORY
         self.root_dir = FATDirectoryEntry(DIR_Name=root_dir_sfn,
-                                          DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                          DIR_Attr=dir_attr,
                                           DIR_NTRes=0,
                                           DIR_CrtTimeTenth=0,
                                           DIR_CrtTime=0,
@@ -597,8 +610,10 @@ class PyFat(object):
             self.__seek(address)
             lfn_dir_data = self.__fp.read(dir_hdr_sz)
 
-        lfn_dir_hdr = struct.unpack(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_LAYOUT, lfn_dir_data)
-        lfn_dir_hdr = dict(zip(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_VARS, lfn_dir_hdr))
+        lfn_hdr_layout = FATLongDirectoryEntry.FAT_LONG_DIRECTORY_LAYOUT
+        lfn_dir_hdr = struct.unpack(lfn_hdr_layout, lfn_dir_data)
+        lfn_dir_hdr = dict(zip(FATLongDirectoryEntry.FAT_LONG_DIRECTORY_VARS,
+                               lfn_dir_hdr))
 
         lfn_entry.add_lfn_entry(**lfn_dir_hdr)
 
@@ -606,7 +621,8 @@ class PyFat(object):
         """Parse directory entry at given address."""
         with self.__lock:
             self.__seek(address)
-            dir_data = self.__fp.read(FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE)
+            dir_hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+            dir_data = self.__fp.read(dir_hdr_size)
 
         dir_hdr = struct.unpack(FATDirectoryEntry.FAT_DIRECTORY_LAYOUT,
                                 dir_data)
@@ -616,7 +632,8 @@ class PyFat(object):
     def parse_dir_entries_in_address(self,
                                      address: int = 0,
                                      max_address: int = 0,
-                                     tmp_lfn_entry: FATLongDirectoryEntry = FATLongDirectoryEntry()):
+                                     tmp_lfn_entry: FATLongDirectoryEntry =
+                                     FATLongDirectoryEntry()):
         """Parse directory entries in address range."""
         dir_hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
@@ -661,7 +678,8 @@ class PyFat(object):
 
             if dir_entry.is_directory() and not dir_entry.is_special():
                 # Iterate all subdirectories except for dot and dotdot
-                subdirs = self.parse_dir_entries_in_cluster_chain(dir_entry.get_cluster())
+                cluster = dir_entry.get_cluster()
+                subdirs = self.parse_dir_entries_in_cluster_chain(cluster)
                 for d in subdirs:
                     dir_entry.add_subdirectory(d)
 
@@ -674,11 +692,14 @@ class PyFat(object):
         """Parse directory entries while following given cluster chain."""
         dir_entries = []
         tmp_lfn_entry = FATLongDirectoryEntry()
-        max_bytes = (self.bpb_header["BPB_SecPerClus"] * self.bpb_header["BPB_BytsPerSec"])
+        max_bytes = (self.bpb_header["BPB_SecPerClus"] *
+                     self.bpb_header["BPB_BytsPerSec"])
         for c in self.get_cluster_chain(cluster):
             # Parse all directory entries in chain
             b = self.get_data_cluster_address(c)
-            tmp_dir_entries, tmp_lfn_entry = self.parse_dir_entries_in_address(b, b+max_bytes, tmp_lfn_entry)
+            ret = self.parse_dir_entries_in_address(b, b+max_bytes,
+                                                    tmp_lfn_entry)
+            tmp_dir_entries, tmp_lfn_entry = ret
             dir_entries += tmp_dir_entries
 
         return dir_entries
@@ -690,31 +711,39 @@ class PyFat(object):
         :returns: Bytes address location of cluster
         """
         # First two cluster entries are reserved
-        sector = (cluster - 2) * self.bpb_header["BPB_SecPerClus"] + self.first_data_sector
+        sector = (cluster - 2) * self.bpb_header["BPB_SecPerClus"] + \
+            self.first_data_sector
         return sector * self.bpb_header["BPB_BytsPerSec"]
 
     @_init_check
     def get_cluster_chain(self, first_cluster):
         """Follow a cluster chain beginning with the first cluster address."""
+        cluster_vals = self.FAT_CLUSTER_VALUES[self.fat_type]
+        min_data_cluster = cluster_vals["MIN_DATA_CLUSTER"]
+        max_data_cluster = cluster_vals["MAX_DATA_CLUSTER"]
+        eoc_min = cluster_vals["END_OF_CLUSTER_MIN"]
+        eoc_max = cluster_vals["END_OF_CLUSTER_MAX"]
+
         i = first_cluster
         while i <= len(self.fat):
-            if self.FAT_CLUSTER_VALUES[self.fat_type]["MIN_DATA_CLUSTER"] <= self.fat[i] <= self.FAT_CLUSTER_VALUES[self.fat_type]["MAX_DATA_CLUSTER"]:
+            if min_data_cluster <= self.fat[i] <= max_data_cluster:
                 # Normal data cluster, follow chain
                 yield i
-            elif self.fat_type == self.FAT_TYPE_FAT12 and self.fat[i] == self.FAT12_SPECIAL_EOC:
+            elif self.fat_type == self.FAT_TYPE_FAT12 and \
+                    self.fat[i] == self.FAT12_SPECIAL_EOC:
                 # Special EOC
                 yield i
                 return
-            elif self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MIN"] <= self.fat[i] <= self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]:
+            elif eoc_min <= self.fat[i] <= eoc_max:
                 # End of cluster, end chain
                 yield i
                 return
-            elif self.fat[i] == self.FAT_CLUSTER_VALUES[self.fat_type]["BAD_CLUSTER"]:
+            elif self.fat[i] == cluster_vals["BAD_CLUSTER"]:
                 # Bad cluster, cannot follow chain, file broken!
                 raise PyFATException("Bad cluster found in FAT cluster "
                                      "chain, cannot access file")
-            elif self.fat[i] == self.FAT_CLUSTER_VALUES[self.fat_type]["FREE_CLUSTER"]:
-                # FREE_CLUSTER mark when following a chain is treated as an error
+            elif self.fat[i] == cluster_vals["FREE_CLUSTER"]:
+                # FREE_CLUSTER mark when following a chain is treated an error
                 raise PyFATException("FREE_CLUSTER mark found in FAT cluster "
                                      "chain, cannot access file")
             else:
@@ -801,12 +830,22 @@ class PyFat(object):
         # Verify BPB headers
         self.__verify_bpb_header()
 
-        # Calculate number of root directory sectors and starting point of root directory
-        self.root_dir_sectors = ((self.bpb_header["BPB_RootEntCnt"] * FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE) + (self.bpb_header["BPB_BytsPerSec"] - 1)) // self.bpb_header["BPB_BytsPerSec"]
-        self.root_dir_sector = self.bpb_header["BPB_RsvdSecCnt"] + (self._get_fat_size_count() * self.bpb_header["BPB_NumFATS"])
+        # Calculate root directory sectors and starting point of root directory
+        root_entries = self.bpb_header["BPB_RootEntCnt"]
+        hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
+        bytes_per_sec = self.bpb_header["BPB_BytsPerSec"]
+        rsvd_secs = self.bpb_header["BPB_RsvdSecCnt"]
+        num_fats = self.bpb_header["BPB_NumFATS"]
+
+        self.root_dir_sectors = ((root_entries * hdr_size) +
+                                 (bytes_per_sec - 1)) // bytes_per_sec
+        self.root_dir_sector = rsvd_secs + (self._get_fat_size_count() *
+                                            num_fats)
 
         # Calculate first data sector
-        self.first_data_sector = self.bpb_header["BPB_RsvdSecCnt"] + (self.bpb_header["BPB_NumFATS"] * self._get_fat_size_count()) + self.root_dir_sectors
+        self.first_data_sector = rsvd_secs + (num_fats *
+                                              self._get_fat_size_count()) + \
+            self.root_dir_sectors
 
         # Determine FAT type
         self.fat_type = self.__determine_fat_type()
