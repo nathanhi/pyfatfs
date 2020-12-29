@@ -509,4 +509,4 @@ class PyFatFS(FS):
             atime = DosDateTime.fromtimestamp(atime, tz=self.tz)
             dentry.lstaccessdate = atime.serialize_date()
 
-        self.fs.write_data_to_cluster(dentry.byte_repr(), dentry.get_cluster())
+        self.fs.update_directory_entry(dentry.get_parent_dir())
