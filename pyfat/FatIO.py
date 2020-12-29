@@ -190,22 +190,23 @@ class FatIO(io.RawIOBase):
         :param size: `int`: Size to truncate to, defaults to 0.
         :returns: `int`: Truncated size
         """
-        size = size if size is not None else self.tell()
+        cur_pos = self.tell()
+        size = size if size is not None else cur_pos
 
         if size > self.dir_entry.get_size():
-            # TODO: Extend file and null it
-            raise NotImplementedError
-
-        # Truncate cluster chain
-        num_clusters = self.fs.calc_num_clusters(size)
-        i = 0
-        for c in self.fs.get_cluster_chain(self.dir_entry.get_cluster()):
-            i += 1
-            if i <= num_clusters:
-                continue
-            self.fs.free_cluster_chain(c)
-            self.fs.flush_fat()
-            break
+            self.seek(0, 2)
+            self.write(b'\0' * (size - self.dir_entry.get_size()))
+            self.seek(cur_pos)
+        elif size < self.dir_entry.get_size():
+            num_clusters = self.fs.calc_num_clusters(size)
+            i = 0
+            for c in self.fs.get_cluster_chain(self.dir_entry.get_cluster()):
+                i += 1
+                if i <= num_clusters:
+                    continue
+                self.fs.free_cluster_chain(c)
+                self.fs.flush_fat()
+                break
 
         # Update file size
         self.dir_entry.set_size(size)
