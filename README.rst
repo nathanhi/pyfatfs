@@ -1,7 +1,7 @@
 pyfat
 =====
 
-.. image:: https://img.shields.io/travis/nathanhi/pyfat.svg?style=flat-square&branch=wip
+.. image:: https://img.shields.io/travis/nathanhi/pyfat.svg?style=flat-square
     :target: https://travis-ci.org/nathanhi/pyfat
     :alt: CI build status
 .. image:: https://img.shields.io/coveralls/github/nathanhi/pyfat?style=flat-square
