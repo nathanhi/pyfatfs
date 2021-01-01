@@ -14,10 +14,10 @@ import warnings
 from contextlib import contextmanager
 from io import BufferedReader, open
 
-from pyfat import FAT_OEM_ENCODING
-from pyfat.EightDotThree import EightDotThree
-from pyfat.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
-from pyfat._exceptions import PyFATException, NotAFatEntryException
+from pyfatfs import FAT_OEM_ENCODING
+from pyfatfs.EightDotThree import EightDotThree
+from pyfatfs.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
+from pyfatfs._exceptions import PyFATException, NotAFatEntryException
 
 
 def _init_check(func):

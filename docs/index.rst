@@ -1,51 +1,24 @@
-fs.fatfs
-========
+pyfatfs
+=======
 
-.. automodule:: pyfat
+.. automodule:: pyfatfs
 
-=================
-PyFilesystem2 API
-=================
-.. autoclass:: pyfat.PyFatFS::PyFatFS
-   :members:
-   :show-inheritance:
+.. toctree::
+   :glob:
+   :maxdepth: 4
 
-================
-PyFAT base class
-================
-.. autoclass:: pyfat.PyFat::PyFat
-   :members:
+   pyfatfs.*
+   CONTRIBUTING
 
-=====================
-FAT Directory entries
-=====================
+===============
+Getting started
+===============
 
-Generic directory entries
--------------------------
-.. autoclass:: pyfat.FATDirectoryEntry::FATDirectoryEntry
-   :members:
-   :show-inheritance:
+.. toctree::
+   :maxdepth: 1
 
-.. autofunction:: pyfat.FATDirectoryEntry.is_8dot3_conform
-.. autofunction:: pyfat.FATDirectoryEntry.make_8dot3_name
+   pyfilesystem2_quickstart
 
-Long File Name directory entries
---------------------------------
-.. autoclass:: pyfat.FATDirectoryEntry::FATLongDirectoryEntry
-  :members:
-  :show-inheritance:
-
-.. autofunction:: pyfat.FATDirectoryEntry.make_lfn_entry
-
-==========
-Exceptions
-==========
-.. autoexception:: pyfat._exceptions::PyFATException
-   :members:
-   :show-inheritance:
-.. autoexception:: pyfat._exceptions::NotAnLFNEntryException
-   :members:
-   :show-inheritance:
 
 Indices and tables
 ==================

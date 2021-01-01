@@ -16,13 +16,13 @@ from fs.errors import DirectoryExpected, DirectoryExists, \
 from fs import ResourceType
 from fs.subfs import SubFS
 
-from pyfat import FAT_OEM_ENCODING
-from pyfat.DosDateTime import DosDateTime
-from pyfat.PyFat import PyFat
-from pyfat.FATDirectoryEntry import FATDirectoryEntry, make_lfn_entry
-from pyfat._exceptions import PyFATException
-from pyfat.FatIO import FatIO
-from pyfat.EightDotThree import EightDotThree
+from pyfatfs import FAT_OEM_ENCODING
+from pyfatfs.DosDateTime import DosDateTime
+from pyfatfs.PyFat import PyFat
+from pyfatfs.FATDirectoryEntry import FATDirectoryEntry, make_lfn_entry
+from pyfatfs._exceptions import PyFATException
+from pyfatfs.FatIO import FatIO
+from pyfatfs.EightDotThree import EightDotThree
 
 
 class PyFatFS(FS):
@@ -30,7 +30,7 @@ class PyFatFS(FS):
 
     def __init__(self, filename: str, encoding: str = FAT_OEM_ENCODING,
                  offset: int = 0, preserve_case: bool = True,
-                 read_only: bool = False, utc: bool = True):
+                 read_only: bool = False, utc: bool = False):
         """PyFilesystem2 FAT constructor, initializes self.fs.
 
         :param filename: `str`: Name of file/device to open as FAT partition.
@@ -72,7 +72,7 @@ class PyFatFS(FS):
         """Verify if given path exists on filesystem.
 
         :param path: Path to file or directory on filesystem
-        :returns Boolean value indicating entries existence
+        :returns: Boolean value indicating entries existence
         """
         try:
             self.fs.root_dir.get_entry(path)
@@ -88,7 +88,7 @@ class PyFatFS(FS):
 
         :param path: Path to file or directory on filesystem
         :param namespaces: Info namespaces to query, `NotImplemented`
-        :returns `Info`
+        :returns: `Info`
         """
         try:
             entry = self.fs.root_dir.get_entry(path)
@@ -111,7 +111,7 @@ class PyFatFS(FS):
         """Get generic filesystem metadata.
 
         :param namespace: Namespace to query, only `standard` supported
-        :returns `dict` with file system meta data
+        :returns: `dict` with file system meta data
         """
         if namespace != u'standard':
             return {}
@@ -129,7 +129,7 @@ class PyFatFS(FS):
         """Get size of file in bytes.
 
         :param path: Path to file or directory on filesystem
-        :returns Size in bytes as `int`
+        :returns: Size in bytes as `int`
         """
         try:
             entry = self.fs.root_dir.get_entry(path)
@@ -143,7 +143,7 @@ class PyFatFS(FS):
         """Get type of file as `ResourceType`.
 
         :param path: Path to file or directory on filesystem
-        :returns `ResourceType.directory` or `ResourceType.file`
+        :returns: `ResourceType.directory` or `ResourceType.file`
         """
         entry = self.fs.root_dir.get_entry(path)
         if entry.is_directory():

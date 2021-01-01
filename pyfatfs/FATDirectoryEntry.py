@@ -4,11 +4,11 @@
 import posixpath
 import struct
 
-from pyfat.DosDateTime import DosDateTime
-from pyfat.EightDotThree import EightDotThree
-from pyfat._exceptions import PyFATException, NotAnLFNEntryException,\
+from pyfatfs.DosDateTime import DosDateTime
+from pyfatfs.EightDotThree import EightDotThree
+from pyfatfs._exceptions import PyFATException, NotAnLFNEntryException,\
     BrokenLFNEntryException
-from pyfat import FAT_OEM_ENCODING, FAT_LFN_ENCODING
+from pyfatfs import FAT_OEM_ENCODING, FAT_LFN_ENCODING
 
 import errno
 
@@ -593,8 +593,8 @@ def make_lfn_entry(dir_name: str,
 
     :param dir_name: Long name of directory
     :param short_name: `EightDotThree` class instance
-    :raises PyFATException if entry name does not require an LFN
-            entry or the name exceeds the FAT limitation of 255 characters
+    :raises: `PyFATException` if entry name does not require an LFN
+             entry or the name exceeds the FAT limitation of 255 characters
     """
     lfn_entry = FATLongDirectoryEntry()
     #: Length in bytes of an LFN entry

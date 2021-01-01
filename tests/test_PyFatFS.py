@@ -7,7 +7,7 @@ from unittest import TestCase
 
 from fs.test import FSTestCases
 
-from pyfat.PyFatFS import PyFatFS
+from pyfatfs.PyFatFS import PyFatFS
 
 
 class TestPyFatFS16(FSTestCases, TestCase):

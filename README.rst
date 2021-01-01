@@ -1,42 +1,63 @@
-pyfat
-=====
+pyfatfs
+=======
 
 .. image:: https://img.shields.io/travis/nathanhi/pyfat.svg?style=flat-square
     :target: https://travis-ci.org/nathanhi/pyfat
     :alt: CI build status
+.. image:: https://img.shields.io/readthedocs/pyfatfs?style=flat-square
+    :target: https://pyfatfs.readthedocs.io/
+    :alt: Read the Docs
 .. image:: https://img.shields.io/coveralls/github/nathanhi/pyfat?style=flat-square
     :target: https://coveralls.io/github/nathanhi/pyfat
     :alt: Test coverage overview
 .. image:: https://img.shields.io/codacy/grade/3def4d7b0bcd4b6f9aa4bb64e0338540?style=flat-square
     :target: https://app.codacy.com/manual/nathanhi/pyfat/dashboard
     :alt: Codacy Code Quality
-.. image:: https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue?style=flat-square
-    :target: https://github.com/nathanhi/pyfat
-    :alt: Python compatibility matrix
+.. image:: https://img.shields.io/pypi/pyversions/pyfatfs?style=flat-square
+    :target: https://github.com/nathanhi/pyfatfs
+    :alt: PyPI - Python Version
+.. image:: https://img.shields.io/pypi/v/pyfatfs?style=flat-square
+    :target: https://pypi.org/project/pyfatfs
+    :alt: PyPI
 .. image:: https://img.shields.io/github/license/nathanhi/pyfat.svg?style=flat-square
     :target: https://github.com/nathanhi/pyfat/blob/HEAD/LICENSE
     :alt: MIT License
 
-pyfat is a filesystem module for use with PyFilesystem2 for anyone
-who needs to access or modify files on a FAT filesystem.
+pyfatfs is a filesystem module for use with `PyFilesystem2 <https://pypi.org/project/fs/>`_
+for anyone who needs to access or modify files on a FAT filesystem. It also
+provides a low-level API that allows direct interaction with a FAT filesystem
+without PyFilesystem2 abstraction.
 
-pyfat supports FAT12/16/32 as well as the VFAT extension (long file names).
+pyfatfs supports FAT12/16/32 as well as the VFAT extension (long file names).
 
+It currently is in an early development state and expected to be unstable and
+contain bugs. For FAT12, currently only read-only access is supported and on
+FAT32 filesystems the FSInfo struct, containing the free cluster information used
+to quickly calculate the free space and easily access information such as the
+next free cluster in the FAT, is not yet supported, so it will be reported by
+fsck operations after writes.
 
 Installation
 ------------
 
-To install pyfat just run from the root of the project:
+pyfatfs is available via PyPI as ``pyfatfs``, so just execute the following
+command to install the package for your project:
 
 .. code-block:: bash
 
-   $ python setup.py install
+   $ pip install pyfatfs
 
 
 Usage
 =====
-Opener
-------
+
+The easiest way to get started with pyfatfs is to use it in conjunction
+with PyFilesystem2:
+
+PyFilesystem2
+-------------
+
+.. pyfilesystem-quickstart-begin
 
 Use fs.open_fs to open a filesystem with a FAT `FS URL <https://pyfilesystem2.readthedocs.io/en/latest/openers.html>`_:
 
@@ -45,20 +66,29 @@ Use fs.open_fs to open a filesystem with a FAT `FS URL <https://pyfilesystem2.re
    import fs
    my_fs = fs.open_fs("fat:///dev/sda1")
 
-The following URL parameters are supported: encoding and offset
 
 Parameters
 ''''''''''
 
+It is possible to supply query parameters to the URI of the
+PyFilesystem2 opener to influence certain behavior; it can
+be compared to mount options. Multiple parameters can be
+supplied by separating them via ``ampersand (&)``.
+
 encoding
 ^^^^^^^^
 
-pyfat offers an encoding parameter to allow overriding the default encoding
-of ibm437 for file names, which was mainly used by DOS and still is a
-fallback of Linux.
+pyfat offers an encoding parameter to allow overriding the
+default encoding of ibm437 for file names, which was mainly
+used by DOS and still is the `default on Linux <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/fat/Kconfig?h=v5.10#n81>`_.
 
-Later versions of Windows were using Windows-1252, also known as CP1252, as
-encoding. Any encoding known by Python can be used as value for this parameter.
+Any encoding known by Python can be used as value for this
+parameter, but keep in mind that this might affect interoperability
+with other systems, especially when the selected encoding/codepage
+is not native or supported.
+
+Please note that this only affects encoding of the 8DOT3 short file names, not
+long file names of the VFAT extension, as LFN are always stored as UTF-16-LE.
 
 .. code-block:: python
 
@@ -107,14 +137,15 @@ utc
 ^^^
 
 Create all timestamps on the filesystem in UTC time rather than local time.
-Affects all directory entries' creation, modification and access times. This
-defaults to true but can be disabled by setting utc to false:
+Affects all directory entries' creation, modification and access times.
 
 .. code-block:: python
 
     import fs
-    my_fs = fs.open_fs("fat:///dev/sda1?utc=false")
+    my_fs = fs.open_fs("fat:///dev/sda1?utc=true")
 
+
+.. pyfilesystem-quickstart-end
 
 Testing
 -------

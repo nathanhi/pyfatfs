@@ -11,8 +11,8 @@ install:
   - pip install -e .
 
 script:
-  - flake8 pyfat tests
-  - py.test --cov=pyfat tests
+  - flake8 pyfatfs tests
+  - py.test --cov=pyfatfs tests
 
 after_success:
   - coveralls

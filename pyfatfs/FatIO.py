@@ -8,7 +8,7 @@ from typing import Union, Optional
 
 from fs.mode import Mode
 
-from pyfat.PyFat import PyFat
+from pyfatfs.PyFat import PyFat
 
 
 class FatIO(io.RawIOBase):
@@ -92,7 +92,7 @@ class FatIO(io.RawIOBase):
     def seekable(self) -> bool:
         """FAT I/O driver is able to seek in files.
 
-        :returns `True`
+        :returns: `True`
         """
         return True
 

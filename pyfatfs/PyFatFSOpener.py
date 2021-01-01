@@ -7,7 +7,7 @@ __all__ = ['PyFatFSOpener']
 
 from fs.opener import Opener
 
-from pyfat.PyFatFS import PyFatFS
+from pyfatfs.PyFatFS import PyFatFS
 
 
 class PyFatFSOpener(Opener):

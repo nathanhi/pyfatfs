@@ -7,7 +7,7 @@ from unittest import mock
 
 import pytest
 
-from pyfat.EightDotThree import EightDotThree
+from pyfatfs.EightDotThree import EightDotThree
 
 
 def test_bytename_set_invalid_length():

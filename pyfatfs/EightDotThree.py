@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-"""8DOT3 helper class & functions."""
+"""8DOT3 file name helper class & functions."""
 
 import errno
 import os
 import string
 
-from pyfat import FAT_OEM_ENCODING
-from pyfat._exceptions import PyFATException, NotAFatEntryException
+from pyfatfs import FAT_OEM_ENCODING
+from pyfatfs._exceptions import PyFATException, NotAFatEntryException
 
 
 def _init_check(func):
