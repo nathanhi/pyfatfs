@@ -104,11 +104,5 @@ html_static_path = ['_static']
 
 autoclass_content = 'both'
 
-# Determine PyFilesystem2 dependency version for intersphinx
-with io.open(os.path.join(os.path.dirname(__file__),
-                          '..', 'requirements', 'install.txt')) as reqs:
-    fs_version = re.search(r"^fs==([^ ]+).*$", reqs.read(),
-                           flags=re.MULTILINE).group(1)
-
 intersphinx_mapping = {'pyfilesystem2':
-    (f'https://docs.pyfilesystem.org/en/v{fs_version}/', None)}
+    (f'https://docs.pyfilesystem.org/en/stable/', None)}
