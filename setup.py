@@ -36,7 +36,7 @@ def _get_readme():
 
 
 setup(name=_get_attribute('__name__'),
-      version=_get_attribute('__version__'),
+      use_scm_version=True,
       description='FAT12/16/32 implementation with VFAT support',
       long_description=_get_readme(),
       long_description_content_type='text/x-rst',
@@ -50,7 +50,7 @@ setup(name=_get_attribute('__name__'),
       python_requires='~=3.6',
       test_suite='tests',
       install_requires=load_requirements("requirements/install.txt"),
-      setup_requires=['pytest-runner'],
+      setup_requires=['pytest-runner', 'setuptools_scm~=5.0.0'],
       tests_require=load_requirements("requirements/test.txt"),
       entry_points={
           'fs.opener': ['fat = pyfatfs.PyFatFSOpener:PyFatFSOpener'],

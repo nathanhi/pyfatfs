@@ -10,8 +10,6 @@ or direct interaction with the filesystem for low-level access.
 """
 
 __name__ = 'pyfatfs'
-# TODO: Fetch version from GitHub release!!
-__version__ = '0.0.0'
 __author__ = 'Nathan-J. Hirschauer'
 __author_email__ = 'nathanhi <at> deepserve.info'
 __license__ = 'MIT License'

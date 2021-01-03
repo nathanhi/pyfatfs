@@ -16,14 +16,10 @@ import io
 import os
 import re
 import sys
-sys.path.insert(0, os.path.abspath('..'))
 
-SEMVER_REGEX = r'^(?P<major>0|[1-9]\d*)\.' \
-               r'(?P<minor>0|[1-9]\d*)\.' \
-               r'(?P<patch>0|[1-9]\d*)' \
-               r'(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)' \
-               r'(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))' \
-               r'?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+from pkg_resources import get_distribution
+
+sys.path.insert(0, os.path.abspath('..'))
 
 def _get_attribute(name):
     """Get version information from __init__.py."""
@@ -38,19 +34,13 @@ def _get_copyright():
         return re.search(r"^Copyright \(c\) (.*)$", f.read(),
                          flags=re.MULTILINE).group(1)
 
-def _get_major_minor():
-    """Get release (major.minor)."""
-    version = _get_attribute('__version__')
-    return '.'.join(re.search(SEMVER_REGEX, version).group("major", "minor"))
-
 # -- Project information -----------------------------------------------------
-# Supplied by setuptools / setup.py
 project = _get_attribute('__name__')
 copyright = _get_copyright()
 author = 'Nathan-J. Hirschauer <nathanhi <at> deepserve.info'
 
-version = _get_major_minor()
-release = _get_attribute('__version__')
+release = get_distribution(project).version
+version = '.'.join(release.split('.')[:2])
 
 # -- General configuration ---------------------------------------------------
 
