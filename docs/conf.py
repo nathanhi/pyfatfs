@@ -18,15 +18,39 @@ import re
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
+SEMVER_REGEX = r'^(?P<major>0|[1-9]\d*)\.' \
+               r'(?P<minor>0|[1-9]\d*)\.' \
+               r'(?P<patch>0|[1-9]\d*)' \
+               r'(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)' \
+               r'(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))' \
+               r'?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+
+def _get_attribute(name):
+    """Get version information from __init__.py."""
+    with io.open(os.path.join(os.path.dirname(__file__), '..',
+                              'pyfatfs', '__init__.py')) as f:
+        return re.search(r"{}\s*=\s*'([^']+)'\s*".format(name),
+                         f.read()).group(1)
+
+def _get_copyright():
+    """Get copyright holders and year information from license."""
+    with io.open(os.path.join(os.path.dirname(__file__), '..', 'LICENSE')) as f:
+        return re.search(r"^Copyright \(c\) (.*)$", f.read(),
+                         flags=re.MULTILINE).group(1)
+
+def _get_major_minor():
+    """Get release (major.minor)."""
+    version = _get_attribute('__version__')
+    return '.'.join(re.search(SEMVER_REGEX, version).group("major", "minor"))
+
 # -- Project information -----------------------------------------------------
 # Supplied by setuptools / setup.py
-
-#project = 'unknown'
-#copyright = 'unknown'
+project = _get_attribute('__name__')
+copyright = _get_copyright()
 author = 'Nathan-J. Hirschauer <nathanhi <at> deepserve.info'
-#version = 'unknown'
-#release = 'unknown'
 
+version = _get_major_minor()
+release = _get_attribute('__version__')
 
 # -- General configuration ---------------------------------------------------
 

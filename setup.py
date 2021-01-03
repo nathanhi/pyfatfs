@@ -8,13 +8,6 @@ import re
 
 from setuptools import setup, find_packages
 
-SEMVER_REGEX = r'^(?P<major>0|[1-9]\d*)\.' \
-               r'(?P<minor>0|[1-9]\d*)\.' \
-               r'(?P<patch>0|[1-9]\d*)' \
-               r'(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)' \
-               r'(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))' \
-               r'?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
-
 try:
     # pip >= 10
     from pip._internal.req import parse_requirements
@@ -34,19 +27,6 @@ def _get_attribute(name):
     with io.open('pyfatfs/__init__.py') as f:
         return re.search(r"{}\s*=\s*'([^']+)'\s*".format(name),
                          f.read()).group(1)
-
-
-def _get_copyright():
-    """Get copyright holders and year information from license."""
-    with io.open('LICENSE') as f:
-        return re.search(r"^Copyright \(c\) (.*)$", f.read(),
-                         flags=re.MULTILINE).group(1)
-
-
-def _get_major_minor():
-    """Get release (major.minor)."""
-    version = _get_attribute('__version__')
-    return '.'.join(re.search(SEMVER_REGEX, version).group("major", "minor"))
 
 
 def _get_readme():
@@ -89,11 +69,4 @@ setup(name=_get_attribute('__name__'),
           'Topic :: Software Development :: Libraries',
           'Topic :: Software Development :: Libraries :: Python Modules',
           'Topic :: System :: Filesystems'],
-      command_options={
-        'build_sphinx': {
-            'project': ('setup.py', _get_attribute('__name__')),
-            'version': ('setup.py', _get_major_minor()),
-            'release': ('setup.py', _get_attribute('__version__')),
-            'copyright': ('setup.py', _get_copyright()),
-            'source_dir': ('setup.py', 'docs')}},
       )
