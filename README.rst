@@ -1,17 +1,17 @@
 pyfatfs
 =======
 
-.. image:: https://img.shields.io/travis/nathanhi/pyfat.svg?style=flat-square
-    :target: https://travis-ci.org/nathanhi/pyfat
+.. image:: https://img.shields.io/travis/nathanhi/pyfatfs.svg?style=flat-square
+    :target: https://travis-ci.org/nathanhi/pyfatfs
     :alt: CI build status
 .. image:: https://img.shields.io/readthedocs/pyfatfs?style=flat-square
     :target: https://pyfatfs.readthedocs.io/
     :alt: Read the Docs
-.. image:: https://img.shields.io/coveralls/github/nathanhi/pyfat?style=flat-square
-    :target: https://coveralls.io/github/nathanhi/pyfat
+.. image:: https://img.shields.io/coveralls/github/nathanhi/pyfatfs?style=flat-square
+    :target: https://coveralls.io/github/nathanhi/pyfatfs
     :alt: Test coverage overview
 .. image:: https://img.shields.io/codacy/grade/3def4d7b0bcd4b6f9aa4bb64e0338540?style=flat-square
-    :target: https://app.codacy.com/manual/nathanhi/pyfat/dashboard
+    :target: https://app.codacy.com/gh/nathanhi/pyfatfs
     :alt: Codacy Code Quality
 .. image:: https://img.shields.io/pypi/pyversions/pyfatfs?style=flat-square
     :target: https://github.com/nathanhi/pyfatfs
@@ -19,8 +19,8 @@ pyfatfs
 .. image:: https://img.shields.io/pypi/v/pyfatfs?style=flat-square
     :target: https://pypi.org/project/pyfatfs
     :alt: PyPI
-.. image:: https://img.shields.io/github/license/nathanhi/pyfat.svg?style=flat-square
-    :target: https://github.com/nathanhi/pyfat/blob/HEAD/LICENSE
+.. image:: https://img.shields.io/github/license/nathanhi/pyfatfs.svg?style=flat-square
+    :target: https://github.com/nathanhi/pyfatfs/blob/HEAD/LICENSE
     :alt: MIT License
 
 pyfatfs is a filesystem module for use with `PyFilesystem2 <https://pypi.org/project/fs/>`_
