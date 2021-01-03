@@ -11,7 +11,7 @@ or direct interaction with the filesystem for low-level access.
 
 __name__ = 'pyfatfs'
 __author__ = 'Nathan-J. Hirschauer'
-__author_email__ = 'nathanhi <at> deepserve.info'
+__author_email__ = 'nathanhi@deepserve.info'
 __license__ = 'MIT License'
 
 
