@@ -385,6 +385,8 @@ class PyFat(object):
         for c in self.get_cluster_chain(cluster):
             cluster_sz += self.bytes_per_cluster
             last_cluster = c
+            if cluster_sz >= data_sz:
+                break
 
         if data_sz > cluster_sz:
             if extend_cluster is False:
@@ -409,6 +411,8 @@ class PyFat(object):
             t = bytes_written
             bytes_written += self.bytes_per_cluster
             self._write_data_to_address(data[t:bytes_written], b)
+            if bytes_written >= len(data):
+                break
 
     @_init_check
     @_readonly_check
