@@ -287,7 +287,7 @@ class PyFatFS(FS):
 
         # Create LFN entry if required
         _sfn = short_name.get_unpadded_filename()
-        if _sfn != dirname.upper() or self.preserve_case:
+        if _sfn != dirname.upper() or (_sfn != dirname and self.preserve_case):
             lfn_entry = make_lfn_entry(dirname, short_name)
             newdir.set_lfn_entry(lfn_entry)
 
