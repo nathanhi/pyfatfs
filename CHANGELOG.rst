@@ -9,6 +9,12 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Fixed
+~~~~~
+
+* `Issue #4 <https://github.com/nathanhi/pyfatfs/issues/4>`_: Removal of last entry in directory leaves remnants
+
+
 0.1.0_ - 2021-01-03
 -------------------
 
