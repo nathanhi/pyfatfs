@@ -78,7 +78,7 @@ supplied by separating them via ``ampersand (&)``.
 encoding
 ^^^^^^^^
 
-pyfat offers an encoding parameter to allow overriding the
+pyfatfs offers an encoding parameter to allow overriding the
 default encoding of ibm437 for file names, which was mainly
 used by DOS and still is the `default on Linux <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/fat/Kconfig?h=v5.10#n81>`_.
 
@@ -151,7 +151,7 @@ Testing
 -------
 
 Tests are located at the `tests` directory. In order to test your new
-contribution to pyfat just run
+contribution to pyfatfs just run
 
 .. code-block:: bash
 
