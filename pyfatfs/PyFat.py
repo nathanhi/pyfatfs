@@ -454,7 +454,7 @@ class PyFat(object):
         # Fill list of found free clusters
         free_clusters = []
         for i, _ in enumerate(self.fat):
-            if min_clus > i > max_clus:
+            if min_clus > i or i > max_clus:
                 # Ignore out of bound entries
                 continue
 
