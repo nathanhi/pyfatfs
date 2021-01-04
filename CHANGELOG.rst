@@ -13,6 +13,7 @@ Fixed
 ~~~~~
 
 * `Issue #4 <https://github.com/nathanhi/pyfatfs/issues/4>`_: Removal of last entry in directory leaves remnants
+* `PR #5 <https://github.com/nathanhi/pyfatfs/pull/5>`_: Fix creating directory with name that already conforms to 8DOT3 by `@koolkdev <https://github.com/koolkdev>`_
 
 
 0.1.0_ - 2021-01-03
