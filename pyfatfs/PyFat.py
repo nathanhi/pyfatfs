@@ -398,7 +398,7 @@ class PyFat(object):
 
         # Fill rest of data with zeroes if erase is set to True
         if erase:
-            new_sz = math.ceil(max(1, data_sz // self.bytes_per_cluster))
+            new_sz = max(1, math.ceil(data_sz / self.bytes_per_cluster))
             new_sz *= self.bytes_per_cluster
             data += b'\0' * (new_sz - data_sz)
 
