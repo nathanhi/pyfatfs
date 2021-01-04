@@ -648,6 +648,7 @@ class PyFat(object):
             # Parse each entry
             dir_hdr = self.__parse_dir_entry(hdr_addr)
             dir_sn = EightDotThree(encoding=self.encoding)
+            dir_first_byte = dir_hdr["DIR_Name"][0]
             try:
                 dir_sn.set_byte_name(dir_hdr["DIR_Name"])
             except NotAFatEntryException as ex:
@@ -663,7 +664,7 @@ class PyFat(object):
                 dir_hdr["DIR_Name"] = dir_sn
 
             # Long File Names
-            if FATLongDirectoryEntry.is_lfn_entry(dir_hdr["DIR_Name"],
+            if FATLongDirectoryEntry.is_lfn_entry(dir_first_byte,
                                                   dir_hdr["DIR_Attr"]):
                 self.parse_lfn_entry(tmp_lfn_entry, hdr_addr)
                 continue
