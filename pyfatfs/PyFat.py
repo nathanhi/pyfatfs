@@ -143,6 +143,7 @@ class PyFat(object):
         self.root_dir_sectors = 0
         self.bytes_per_cluster = 0
         self.first_data_sector = 0
+        self.first_free_cluster = 0
         self.fat_type = self.FAT_TYPE_UNKNOWN
         self.fat = {}
         self.initialised = False
@@ -360,6 +361,7 @@ class PyFat(object):
             tmp_fat = self.fat.copy()
             for cl in self.get_cluster_chain(cluster):
                 tmp_fat[cl] = _freeclus
+                self.first_free_cluster = min(cl, self.first_free_cluster)
             self.fat = tmp_fat
 
     @_init_check
@@ -457,7 +459,7 @@ class PyFat(object):
 
         # Fill list of found free clusters
         free_clusters = []
-        for i, _ in enumerate(self.fat):
+        for i in range(self.first_free_cluster, len(self.fat)):
             if min_clus > i or i > max_clus:
                 # Ignore out of bound entries
                 continue
@@ -482,6 +484,7 @@ class PyFat(object):
             raise PyFATException(f"Not enough free space to allocate "
                                  f"{size} bytes ({free_space} bytes free)",
                                  errno=errno.ENOSPC)
+        self.first_free_cluster = i
 
         # Allocate cluster chain in FAT
         eoc_max = self.FAT_CLUSTER_VALUES[self.fat_type]["END_OF_CLUSTER_MAX"]
