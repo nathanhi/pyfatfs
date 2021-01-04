@@ -632,8 +632,11 @@ class PyFat(object):
                                      address: int = 0,
                                      max_address: int = 0,
                                      tmp_lfn_entry: FATLongDirectoryEntry =
-                                     FATLongDirectoryEntry()):
+                                     None):
         """Parse directory entries in address range."""
+        if tmp_lfn_entry is None:
+            tmp_lfn_entry = FATLongDirectoryEntry()
+
         dir_hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
 
         if max_address == 0:
