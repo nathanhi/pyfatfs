@@ -41,10 +41,10 @@ class FatIO(io.RawIOBase):
         self.__bpos = 0
         #: Current cluster chain number
         self.__cpos = self.dir_entry.get_cluster()
+        #: Current cluster chain index
+        self.__cindex = 0
         #: Current cluster chain offset (in bytes)
         self.__coffpos = 0
-        #: Handle to cluster chain iterator
-        self.__fp = self.fs.get_cluster_chain(self.__cpos)
 
         if self.mode.appending:
             self.seek(0, 2)
@@ -77,15 +77,28 @@ class FatIO(io.RawIOBase):
             raise ValueError(f"Invalid whence {whence}, should be 0, 1 or 2")
 
         offset = min(offset, self.dir_entry.filesize)
+        prev_index = self.__cindex
 
-        cluster_count = offset // self.fs.bytes_per_cluster
+        self.__cindex = offset // self.fs.bytes_per_cluster
         self.__coffpos = offset % self.fs.bytes_per_cluster
         self.__bpos = offset
-        self.__fp = self.fs.get_cluster_chain(self.dir_entry.get_cluster())
-        self.__cpos = self.dir_entry.get_cluster()
 
-        for _ in range(0, cluster_count):
-            self.__cpos = next(self.__fp)
+        if self.__bpos == self.dir_entry.filesize and \
+                self.__bpos > 0 and self.__coffpos == 0:
+            # We are currently at the end of the last cluster, there is no
+            # next cluster so go back to the end of the previous cluster
+            self.__coffpos = self.fs.bytes_per_cluster
+            self.__cindex -= 1
+
+        # If we go back, we have to start from the beginning of the file
+        if self.__cindex < prev_index:
+            self.__cpos = self.dir_entry.get_cluster()
+            prev_index = 0
+
+        if self.__cindex > prev_index:
+            fp = self.fs.get_cluster_chain(self.__cpos)
+            for _ in range(0, self.__cindex - prev_index + 1):
+                self.__cpos = next(fp)
 
         return self.__bpos
 
@@ -121,7 +134,7 @@ class FatIO(io.RawIOBase):
         chunks = []
         read_bytes = 0
         cluster_offset = self.__coffpos
-        for c in self.__fp:
+        for c in self.fs.get_cluster_chain(self.__cpos):
             chunk_size = self.fs.bytes_per_cluster - cluster_offset
             # Do not read past EOF
             if read_bytes + chunk_size > size:
@@ -161,22 +174,15 @@ class FatIO(io.RawIOBase):
             return sz
         elif cluster == 0:
             # Allocate new cluster chain if needed
-            cluster = self.fs.allocate_bytes(sz)[0]
-            self.dir_entry.set_cluster(cluster)
+            self.__cpos = self.fs.allocate_bytes(sz)[0]
+            self.dir_entry.set_cluster(self.__cpos)
         else:
-            # Get the current cluster and rewrite
-            __coffpos = self.__coffpos
-            if self.__bpos == self.dir_entry.filesize and self.__coffpos == 0:
-                # New cluster required - concatenate to last cluster
-                __coffpos = self.fs.bytes_per_cluster
-                cluster = self.__cpos
-            else:
-                cluster = next(self.__fp)
-            if __coffpos != 0:
-                cluster_data = self.fs.read_cluster_contents(cluster)
-                __b = cluster_data[0:__coffpos] + __b
+            # Rewrite from current cluster
+            if self.__coffpos != 0:
+                cluster_data = self.fs.read_cluster_contents(self.__cpos)
+                __b = cluster_data[0:self.__coffpos] + __b
 
-        self.fs.write_data_to_cluster(__b, cluster)
+        self.fs.write_data_to_cluster(__b, self.__cpos)
         if self.__bpos + sz > self.dir_entry.filesize:
             self.dir_entry.filesize = self.__bpos + sz
         self.seek(sz, 1)
