@@ -267,7 +267,7 @@ class PyFat(object):
         # FAT16: 16 bits (2 bytes) per FAT entry
         # FAT32: 32 bits (4 bytes) per FAT entry
         fat_entry_size = self.fat_type / 8
-        total_entries = int(fat_size // fat_entry_size)
+        total_entries = math.ceil(fat_size / fat_entry_size)
         self.fat = [None] * total_entries
 
         curr = 0
@@ -278,6 +278,7 @@ class PyFat(object):
 
             if self.fat_type == self.FAT_TYPE_FAT12:
                 fat_nibble = fats[0][int(curr):math.ceil(offset)]
+                fat_nibble = fat_nibble.ljust(2, b"\0")
                 self.fat[cluster] = struct.unpack("<H", fat_nibble)[0]
 
                 if cluster % 2 == 0:

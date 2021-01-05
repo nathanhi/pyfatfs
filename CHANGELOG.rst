@@ -9,6 +9,15 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Fixed
+~~~~~
+
+* Fix calculation of FAT entries for FAT12
+* `PR #6 <https://github.com/nathanhi/pyfatfs/pull/6>`_: Fix bug in parsing LFNs when opening multiple file systems by `@koolkdev <https://github.com/koolkdev>`_
+* `PR #7 <https://github.com/nathanhi/pyfatfs/pull/7>`_: Optimize sequential I/O with big files + small bug fixes in writing/allocating clusters by `@koolkdev <https://github.com/koolkdev>`_
+   * Cache known location in filesystem for seek and write operations
+   * Fix range check during byte allocation
+   * Don't iterate all clusters on write_data_to_cluster
 
 0.1.1_ - 2021-01-04
 -------------------
