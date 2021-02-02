@@ -8,7 +8,7 @@ alabaster==0.7.12
     # via sphinx
 babel==2.9.0
     # via sphinx
-bleach==3.2.1
+bleach==3.3.0
     # via readme-renderer
 certifi==2020.12.5
     # via requests
