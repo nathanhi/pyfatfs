@@ -23,4 +23,4 @@ pytest-runner==5.2        # via -r requirements/in/test.in
 pytest==6.2.1             # via -r requirements/in/test.in, pytest-cov, pytest-mock
 requests==2.25.1          # via codacy-coverage, coveralls
 toml==0.10.2              # via pytest
-urllib3==1.26.2           # via requests
+urllib3==1.26.3           # via requests
