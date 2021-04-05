@@ -439,7 +439,7 @@ class PyFatFS(FS):
         returns: `BinaryIO` stream
         """
         path = self.validatepath(path)
-        mode = Mode(mode)
+        mode = Mode(mode + 'b')
         if mode.create:
             if mode.exclusive:
                 try:
