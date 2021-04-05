@@ -156,6 +156,13 @@ class FatIO(io.RawIOBase):
                                "than was requested.")
         return chunks
 
+    def readinto(self, __buffer: bytearray) -> Optional[int]:
+        """Read data "directly" into bytearray."""
+        data = self.read(len(__buffer))
+        bytes_read = len(data)
+        __buffer[:bytes_read] = data
+        return bytes_read
+
     def writable(self) -> bool:
         """Determine whether or not the file is writable."""
         if not self.dir_entry.is_read_only() and not self.fs.is_read_only:
