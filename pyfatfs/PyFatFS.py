@@ -385,7 +385,10 @@ class PyFatFS(FS):
         for d in dirs:
             self.removetree(posixpath.join(dir_path, str(d)))
 
-        return self.removedir(dir_path)
+        try:
+            self.removedir(dir_path)
+        except RemoveRootError:
+            pass
 
     def remove(self, path: str):
         """Remove a file from the filesystem.

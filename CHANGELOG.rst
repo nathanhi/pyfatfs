@@ -18,6 +18,7 @@ Fixed
    * `PR #9 <https://github.com/nathanhi/pyfatfs/pull/9>`_: Bump cryptography from 3.3.1 to 3.4.6
    * `PR #11 <https://github.com/nathanhi/pyfatfs/pull/11>`_: Bump urllib3 from 1.26.2 to 1.26.4
    * `PR #12 <https://github.com/nathanhi/pyfatfs/pull/12>`_: Bump jinja2 from 2.11.2 to 2.11.3
+* Do not fail with ``RemoveRootError`` on ``removetree("/")``
 
 0.1.2_ - 2021-01-05
 -------------------
