@@ -1,8 +1,8 @@
 pyfatfs
 =======
 
-.. image:: https://img.shields.io/travis/nathanhi/pyfatfs.svg?style=flat-square
-    :target: https://travis-ci.org/nathanhi/pyfatfs
+.. image:: https://img.shields.io/github/workflow/status/nathanhi/pyfatfs/test?style=flat-square
+    :target: https://github.com/nathanhi/pyfatfs/actions/workflows/test.yml
     :alt: CI build status
 .. image:: https://img.shields.io/readthedocs/pyfatfs?style=flat-square
     :target: https://pyfatfs.readthedocs.io/

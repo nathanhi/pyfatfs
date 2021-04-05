@@ -8,6 +8,7 @@ jobs:
   deploy:
 
     runs-on: ubuntu-latest
+    needs: test
 
     steps:
     - uses: actions/checkout@v2
