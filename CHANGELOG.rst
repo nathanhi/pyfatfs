@@ -13,6 +13,7 @@ Added
 ~~~~~
 
 * ``readinto`` method to directly read into a bytearray
+* Write support for FAT12
 
 Fixed
 ~~~~~

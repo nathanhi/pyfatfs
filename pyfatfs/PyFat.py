@@ -221,6 +221,7 @@ class PyFat(object):
         return self.bpb_header["BPB_TotSec32"]
 
     def _get_fat_size_count(self):
+        """Get BPB_FATsz value."""
         if self.bpb_header["BPB_FATSz16"] != 0:
             return self.bpb_header["BPB_FATSz16"]
 
@@ -267,7 +268,7 @@ class PyFat(object):
         # FAT16: 16 bits (2 bytes) per FAT entry
         # FAT32: 32 bits (4 bytes) per FAT entry
         fat_entry_size = self.fat_type / 8
-        total_entries = math.ceil(fat_size / fat_entry_size)
+        total_entries = int(fat_size // fat_entry_size)
         self.fat = [None] * total_entries
 
         curr = 0
@@ -279,7 +280,12 @@ class PyFat(object):
             if self.fat_type == self.FAT_TYPE_FAT12:
                 fat_nibble = fats[0][int(curr):math.ceil(offset)]
                 fat_nibble = fat_nibble.ljust(2, b"\0")
-                self.fat[cluster] = struct.unpack("<H", fat_nibble)[0]
+                try:
+                    self.fat[cluster] = struct.unpack("<H", fat_nibble)[0]
+                except IndexError:
+                    # Out of bounds, FAT size is not cleanly divisible by 3
+                    # Do not touch last clusters
+                    break
 
                 if cluster % 2 == 0:
                     # Even: Keep low 12-bits of word
@@ -322,16 +328,27 @@ class PyFat(object):
         """
         b = bytearray(b'')
         if self.fat_type == self.FAT_TYPE_FAT12:
-            raise NotImplementedError("FAT12 write support currently "
-                                      "not implemented!")
-        elif self.fat_type == self.FAT_TYPE_FAT16:
-            fmt = "<H"
-        else:
-            # FAT32
-            fmt = "<L"
+            fat_size = self.bpb_header["BPB_BytsPerSec"]
+            fat_size *= self._get_fat_size_count()
 
-        for c in self.fat:
-            b += struct.pack(fmt, c)
+            for i, e in enumerate(self.fat):
+                if i % 2 == 0:
+                    b += struct.pack("<H", e)
+                else:
+                    nibble = b[-1:]
+                    nibble = struct.unpack("<B", nibble)[0]
+                    b = b[:-1]
+                    b += struct.pack("<BB", ((e & 0xF) << 4) | nibble, e >> 4)
+
+        else:
+            if self.fat_type == self.FAT_TYPE_FAT16:
+                fmt = "<H"
+            else:
+                # FAT32
+                fmt = "<L"
+
+            for c in self.fat:
+                b += struct.pack(fmt, c)
         return b
 
     @_init_check
@@ -905,7 +922,7 @@ class PyFat(object):
                                      self.FS_TYPES[self.fat_type]):
                 print(f"BS_FilSysType contains {bs_filsystype}, unexpected "
                       f"for FAT{self.fat_type}")
-        elif bs_bootsig not in (0x28, 0x00, 0x2a):
+        elif bs_bootsig not in (0x28, 0x00, 0x2a, 0x33):
             raise PyFATException("Invalid FAT extended boot signature value "
                                  "encountered: '{}'".format(hex(bs_bootsig)))
 
