@@ -13,6 +13,7 @@ import warnings
 
 from contextlib import contextmanager
 from io import BufferedReader, open
+from typing import Union
 
 from pyfatfs import FAT_OEM_ENCODING
 from pyfatfs.EightDotThree import EightDotThree
@@ -147,7 +148,6 @@ class PyFat(object):
         self.fat_type = self.FAT_TYPE_UNKNOWN
         self.fat = {}
         self.initialised = False
-        self.fat_clusterchains = {}
         self.encoding = encoding
         self.is_read_only = True
         self.__lock = threading.Lock()
@@ -797,8 +797,10 @@ class PyFat(object):
         except PyFATException:
             pass
 
-    def __determine_fat_type(self):
-        """Determine FAT size.
+    def __determine_fat_type(self) -> Union["PyFat.FAT_TYPE_FAT12",
+                                            "PyFat.FAT_TYPE_FAT16",
+                                            "PyFat.FAT_TYPE_FAT32"]:
+        """Determine FAT type.
 
         An internal method to determine whether this volume is FAT12,
         FAT16 or FAT32.
@@ -818,13 +820,31 @@ class PyFat(object):
         count_of_clusters = data_sec // self.bpb_header["BPB_SecPerClus"]
 
         if count_of_clusters < 4085:
-            fat_type = self.FAT_TYPE_FAT12
+            msft_fat_type = self.FAT_TYPE_FAT12
         elif count_of_clusters < 65525:
-            fat_type = self.FAT_TYPE_FAT16
+            msft_fat_type = self.FAT_TYPE_FAT16
         else:
-            fat_type = self.FAT_TYPE_FAT32
+            msft_fat_type = self.FAT_TYPE_FAT32
 
-        return fat_type
+        if self.bpb_header["BPB_FATSz16"] == 0:
+            self.__parse_fat32_header()
+            if self.fat_header["BPB_FATSz32"] != 0:
+                linux_fat_type = self.FAT_TYPE_FAT32
+            else:
+                self.fat_header = None
+                linux_fat_type = msft_fat_type
+        elif count_of_clusters >= 4085:
+            linux_fat_type = self.FAT_TYPE_FAT16
+        else:
+            linux_fat_type = self.FAT_TYPE_FAT12
+
+        if msft_fat_type != linux_fat_type:
+            import warnings
+            warnings.warn(f"Unable to reliably determine FAT type, "
+                          f"guessing either FAT{msft_fat_type} or "
+                          f"FAT{linux_fat_type}. Opting for "
+                          f"FAT{linux_fat_type}.")
+        return linux_fat_type
 
     def __parse_fat12_header(self):
         """Parse FAT12/16 header."""

@@ -26,6 +26,8 @@ Fixed
    * `PR #12 <https://github.com/nathanhi/pyfatfs/pull/12>`_: Bump jinja2 from 2.11.2 to 2.11.3
 * Do not fail with ``RemoveRootError`` on ``removetree("/")``
 * ``openbin`` now sets the ``b`` mode on file open
+* Support non-standard Linux formatted filesystems (i.e. FAT32 with less than 65525 clusters)
+   * Emits a warning when such a filesystem is encountered
 
 0.1.2_ - 2021-01-05
 -------------------
