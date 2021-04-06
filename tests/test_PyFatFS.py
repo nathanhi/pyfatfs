@@ -11,7 +11,7 @@ from pyfatfs.PyFat import PyFat
 from pyfatfs.PyFatFS import PyFatFS
 
 
-class TestPyFatFS12(TestCase):
+class TestPyFatFS12(FSTestCases, TestCase):
     """Test specifics of FAT12 filesystem."""
 
     @mock.patch('pyfatfs.PyFat.PyFat.close')
@@ -49,6 +49,15 @@ class TestPyFatFS12(TestCase):
         fat_size *= pf._get_fat_size_count()
         self.assertEqual(fat_size, len(fat))
 
+    def make_fs(self):  # pylint: disable=R0201
+        """Create filesystem for pyfilesystem2 integration tests."""
+        img_file = os.path.join(os.path.dirname(__file__),
+                                "data", "pyfat12.img")
+        with gzip.open(img_file + '.gz', "r") as imggz:
+            with open(img_file, 'wb') as img:
+                img.write(imggz.read())
+
+        return PyFatFS(img_file, encoding='UTF-8')
 
 class TestPyFatFS16(FSTestCases, TestCase):
     """Integration tests with PyFilesystem2 for FAT16."""
