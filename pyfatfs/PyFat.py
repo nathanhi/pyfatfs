@@ -839,7 +839,6 @@ class PyFat(object):
             linux_fat_type = self.FAT_TYPE_FAT12
 
         if msft_fat_type != linux_fat_type:
-            import warnings
             warnings.warn(f"Unable to reliably determine FAT type, "
                           f"guessing either FAT{msft_fat_type} or "
                           f"FAT{linux_fat_type}. Opting for "
