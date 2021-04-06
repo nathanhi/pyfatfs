@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """Tests from PyFilesystem2."""
+
 import gzip
 import os
+from functools import lru_cache
+from io import BytesIO
 from unittest import TestCase, mock
 
 from fs.test import FSTestCases
@@ -11,8 +14,37 @@ from pyfatfs.PyFat import PyFat
 from pyfatfs.PyFatFS import PyFatFS
 
 
-class TestPyFatFS12(FSTestCases, TestCase):
+class TestPyFatFS16(FSTestCases, TestCase):
+    """Integration tests with PyFilesystem2 for FAT16."""
+
+    FS_IMG_FILE = "pyfat16.img.gz"
+
+    @staticmethod
+    @lru_cache()
+    def __read_fsimg(img_file):
+        with gzip.open(img_file, "r") as imggz:
+            return imggz.read()
+
+    def make_fs(self):  # pylint: disable=R0201
+        """Create filesystem for pyfilesystem2 integration tests."""
+        img_file = os.path.join(os.path.dirname(__file__),
+                                "data", self.FS_IMG_FILE)
+        with mock.patch('pyfatfs.PyFat.open') as mock_open:
+            mock_open.return_value = BytesIO(self.__read_fsimg(img_file))
+            return PyFatFS("/this/does/not/exist.img",
+                           encoding='UTF-8')
+
+
+class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase):
+    """Integration tests with PyFilesystem2 for FAT32."""
+
+    FS_IMG_FILE = "pyfat32.img.gz"
+
+
+class TestPyFatFS12(TestPyFatFS16, FSTestCases, TestCase):
     """Test specifics of FAT12 filesystem."""
+
+    FS_IMG_FILE = "pyfat12.img.gz"
 
     @mock.patch('pyfatfs.PyFat.PyFat.close')
     def test_fat_serialize(self, mock_close):
@@ -48,41 +80,3 @@ class TestPyFatFS12(FSTestCases, TestCase):
         fat_size = pf.bpb_header["BPB_BytsPerSec"]
         fat_size *= pf._get_fat_size_count()
         self.assertEqual(fat_size, len(fat))
-
-    def make_fs(self):  # pylint: disable=R0201
-        """Create filesystem for pyfilesystem2 integration tests."""
-        img_file = os.path.join(os.path.dirname(__file__),
-                                "data", "pyfat12.img")
-        with gzip.open(img_file + '.gz', "r") as imggz:
-            with open(img_file, 'wb') as img:
-                img.write(imggz.read())
-
-        return PyFatFS(img_file, encoding='UTF-8')
-
-
-class TestPyFatFS16(FSTestCases, TestCase):
-    """Integration tests with PyFilesystem2 for FAT16."""
-
-    def make_fs(self):  # pylint: disable=R0201
-        """Create filesystem for pyfilesystem2 integration tests."""
-        img_file = os.path.join(os.path.dirname(__file__),
-                                "data", "pyfat16.img")
-        with gzip.open(img_file + '.gz', "r") as imggz:
-            with open(img_file, 'wb') as img:
-                img.write(imggz.read())
-
-        return PyFatFS(img_file, encoding='UTF-8')
-
-
-class TestPyFatFS32(FSTestCases, TestCase):
-    """Integration tests with PyFilesystem2 for FAT32."""
-
-    def make_fs(self):  # pylint: disable=R0201
-        """Create filesystem for pyfilesystem2 integration tests."""
-        img_file = os.path.join(os.path.dirname(__file__),
-                                "data", "pyfat32.img")
-        with gzip.open(img_file + '.gz', "r") as imggz:
-            with open(img_file, 'wb') as img:
-                img.write(imggz.read())
-
-        return PyFatFS(img_file, encoding='UTF-8')
