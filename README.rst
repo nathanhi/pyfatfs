@@ -31,11 +31,10 @@ without PyFilesystem2 abstraction.
 pyfatfs supports FAT12/16/32 as well as the VFAT extension (long file names).
 
 It currently is in an early development state and expected to be unstable and
-contain bugs. For FAT12, currently only read-only access is supported and on
-FAT32 filesystems the FSInfo struct, containing the free cluster information used
-to quickly calculate the free space and easily access information such as the
-next free cluster in the FAT, is not yet supported, so it will be reported by
-fsck operations after writes.
+contain bugs. On FAT32 filesystems the FSInfo struct, containing the free cluster
+information used to quickly calculate the free space and easily access information
+such as the next free cluster in the FAT, is not yet supported, so it will be
+reported by fsck operations after writes.
 
 Installation
 ------------
