@@ -900,8 +900,6 @@ class PyFat(object):
         # Parse FAT type specific header
         if self.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
             self.__parse_fat12_header()
-
-            self.__verify_fat12_header()
         elif self.fat_type == self.FAT_TYPE_FAT32:
             # FAT32, probably - probe for it
             if self.bpb_header["BPB_FATSz16"] != 0:
@@ -911,8 +909,6 @@ class PyFat(object):
                                      errno=errno.EINVAL)
 
             self.__parse_fat32_header()
-
-            # TODO: Verify FAT32 header
         else:
             raise PyFATException("Unknown FAT filesystem type, "
                                  "filesystem corrupt?", errno=errno.EINVAL)
@@ -927,23 +923,6 @@ class PyFat(object):
 
         # Initialisation finished
         self.initialised = True
-
-    def __verify_fat12_header(self):
-        """Verify FAT12/16 header for correctness."""
-        # Extended boot signature had two different versions:
-        # 0x00: Pre-DOS 4.0 BPB (no EBPB present)
-        # 0x28: Only BS_VolID is present
-        # 0x29: Full FAT12 bootsector present
-        bs_bootsig = self.fat_header["BS_BootSig"]
-        if bs_bootsig == 0x29:
-            bs_filsystype = self.fat_header["BS_FilSysType"]
-            if bs_filsystype not in (self.FS_TYPES[self.FAT_TYPE_UNKNOWN],
-                                     self.FS_TYPES[self.fat_type]):
-                print(f"BS_FilSysType contains {bs_filsystype}, unexpected "
-                      f"for FAT{self.fat_type}")
-        elif bs_bootsig not in (0x28, 0x00, 0x2a, 0x33):
-            raise PyFATException("Invalid FAT extended boot signature value "
-                                 "encountered: '{}'".format(hex(bs_bootsig)))
 
     def __verify_bpb_header(self):
         """Verify BPB header for correctness."""

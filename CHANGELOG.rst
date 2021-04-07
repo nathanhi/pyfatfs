@@ -28,6 +28,7 @@ Fixed
 * ``openbin`` now sets the ``b`` mode on file open
 * Support non-standard Linux formatted filesystems (i.e. FAT32 with less than 65525 clusters)
    * Emits a warning when such a filesystem is encountered
+* Remove check for boot signature version
 
 0.1.2_ - 2021-01-05
 -------------------
