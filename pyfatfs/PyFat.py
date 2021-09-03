@@ -18,6 +18,7 @@ from typing import Union
 from pyfatfs import FAT_OEM_ENCODING
 from pyfatfs.EightDotThree import EightDotThree
 from pyfatfs.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
+from pyfatfs.FATHeader import FATHeader, FAT32Header, FAT12Header
 from pyfatfs._exceptions import PyFATException, NotAFatEntryException
 
 
@@ -101,29 +102,17 @@ class PyFat(object):
                        "BPB_FATSz16", "BPB_SecPerTrk", "BPB_NumHeads",
                        "BPB_HiddSec", "BPB_TotSec32"]
 
-    #: FAT12/16 header layout in struct formatted string
-    fat12_header_layout = "<BBBL11s8s"
-    #: FAT12/16 header fields when extracted with fat12_header_layout
-    fat12_header_vars = ["BS_DrvNum", "BS_Reserved1", "BS_BootSig",
-                         "BS_VolID", "BS_VolLab", "BS_FilSysType"]
-
-    #: FAT32 header layout in struct formatted string
-    fat32_header_layout = "<LHHLHH12sBBBL11s8s"
-    #: FAT32 header fields when extracted with fat32_header_layout
-    fat32_header_vars = ["BPB_FATSz32", "BPB_ExtFlags", "BPB_FSVer",
-                         "BPB_RootClus", "BPB_FSInfo", "BPB_BkBootSec",
-                         "BPB_Reserved", "BS_DrvNum", "BS_Reserved1",
-                         "BS_BootSig", "BS_VolID", "BS_VolLab",
-                         "BS_FilSysType"]
-
-    #: FAT12/16 bit mask for clean shutdown bit
-    FAT12_CLEAN_SHUTDOWN_BIT_MASK = 0x8000
-    #: FAT12/16 bit mask for volume error bit
-    FAT12_DRIVE_ERROR_BIT_MASK = 0x4000
+    #: FAT16 bit mask for clean shutdown bit
+    FAT16_CLEAN_SHUTDOWN_BIT_MASK = 0x8000
+    #: FAT16 bit mask for volume error bit
+    FAT16_DRIVE_ERROR_BIT_MASK = 0x4000
     #: FAT32 bit mask for clean shutdown bit
-    FAT32_CLEAN_SHUTDOWN_BIT_MASK = 0x0800000
+    FAT32_CLEAN_SHUTDOWN_BIT_MASK = 0x8000000
     #: FAT32 bit mask for volume error bit
-    FAT32_DRIVE_ERROR_BIT_MASK = 0x0400000
+    FAT32_DRIVE_ERROR_BIT_MASK = 0x4000000
+
+    #: Dirty bit in FAT header
+    FAT_DIRTY_BIT_MASK = 0x01
 
     def __init__(self,
                  encoding: str = 'ibm437',
@@ -178,6 +167,63 @@ class PyFat(object):
             self.__seek(cluster_address)
             return self.__fp.read(sz)
 
+    def __get_clean_shutdown_bitmask(self):
+        """Get clean shutdown bitmask for current FS.
+
+        :raises: AttributeError
+        """
+        return getattr(self, f"FAT{self.fat_type}_CLEAN_SHUTDOWN_BIT_MASK")
+
+    def _is_dirty(self) -> bool:
+        """Check whether or not the partition currently is dirty."""
+        try:
+            clean_shutdown_bitmask = self.__get_clean_shutdown_bitmask()
+        except AttributeError:
+            # Bit not set on FAT12
+            dos_dirty = False
+        else:
+            dos_dirty = (self.fat[1] &
+                         clean_shutdown_bitmask) != clean_shutdown_bitmask
+
+        nt_dirty = (self.fat_header["BS_Reserved1"] &
+                    self.FAT_DIRTY_BIT_MASK) == self.FAT_DIRTY_BIT_MASK
+
+        return dos_dirty or nt_dirty
+
+    def _mark_dirty(self):
+        """Mark partition as not cleanly unmounted.
+
+        Apparently the dirty bit in FAT[1] is used by DOS,
+        while BS_Reserved1 is used by NT. Always set both.
+        """
+        try:
+            clean_shutdown_bitmask = self.__get_clean_shutdown_bitmask()
+        except AttributeError:
+            pass
+        else:
+            # Only applicable for FAT16/32
+            self.fat[1] = (self.fat[1] & ~clean_shutdown_bitmask) | \
+                          (0 & clean_shutdown_bitmask)
+            self.flush_fat()
+
+        self.fat_header["BS_Reserved1"] |= self.FAT_DIRTY_BIT_MASK
+        self._write_fat_header()
+
+    def _mark_clean(self):
+        """Mark partition as cleanly unmounted."""
+        try:
+            clean_shutdown_bitmask = self.__get_clean_shutdown_bitmask()
+        except AttributeError:
+            pass
+        else:
+            self.fat[1] |= clean_shutdown_bitmask
+            self.flush_fat()
+
+        self.fat_header["BS_Reserved1"] = (self.fat_header["BS_Reserved1"]
+                                           & ~self.FAT_DIRTY_BIT_MASK) | \
+                                          (0 & self.FAT_DIRTY_BIT_MASK)
+        self._write_fat_header()
+
     def open(self, filename: str, read_only: bool = False):
         """Open filesystem for usage with PyFat.
 
@@ -202,6 +248,13 @@ class PyFat(object):
         # Parse FAT
         self._parse_fat()
 
+        # Check for clean shutdown
+        if self._is_dirty():
+            warnings.warn("Filesystem was not cleanly unmounted on last "
+                          "access. Check for data corruption.")
+        if not self.is_read_only:
+            self._mark_dirty()
+
         # Parse root directory
         # TODO: Inefficient to always recursively parse the root dir.
         #       It would make sense to parse it on demand instead.
@@ -225,10 +278,8 @@ class PyFat(object):
         if self.bpb_header["BPB_FATSz16"] != 0:
             return self.bpb_header["BPB_FATSz16"]
 
-        # Only possible with FAT32
-        self.__parse_fat32_header()
         try:
-            return self.fat_header["BPB_FATSz32"]
+            return self._parse_fat_header(force_fat32=True)["BPB_FATSz32"]
         except KeyError:
             raise PyFATException("Invalid FAT size of 0 detected in header, "
                                  "cannot continue")
@@ -785,7 +836,7 @@ class PyFat(object):
     def close(self):
         """Close session and free up all handles."""
         if not self.is_read_only:
-            self.flush_fat()
+            self._mark_clean()
 
         self.__fp.close()
         self.initialised = False
@@ -827,11 +878,10 @@ class PyFat(object):
             msft_fat_type = self.FAT_TYPE_FAT32
 
         if self.bpb_header["BPB_FATSz16"] == 0:
-            self.__parse_fat32_header()
-            if self.fat_header["BPB_FATSz32"] != 0:
+            fat_hdr = self._parse_fat_header(force_fat32=True)
+            if fat_hdr["BPB_FATSz32"] != 0:
                 linux_fat_type = self.FAT_TYPE_FAT32
             else:
-                self.fat_header = None
                 linux_fat_type = msft_fat_type
         elif count_of_clusters >= 4085:
             linux_fat_type = self.FAT_TYPE_FAT16
@@ -845,25 +895,37 @@ class PyFat(object):
                           f"FAT{linux_fat_type}.")
         return linux_fat_type
 
-    def __parse_fat12_header(self):
-        """Parse FAT12/16 header."""
+    @_readonly_check
+    def _write_fat_header(self):
+        with self.__lock:
+            self.__seek(36)
+            self.__fp.write(bytes(self.fat_header))
+
+    def _parse_fat_header(self, force_fat32: bool = False) -> FATHeader:
+        """Parse FAT header."""
         with self.__lock:
             self.__seek(0)
             boot_sector = self.__fp.read(512)
 
-        header = struct.unpack(self.fat12_header_layout,
-                               boot_sector[36:][:26])
-        self.fat_header = dict(zip(self.fat12_header_vars, header))
+        if self.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16] \
+                and not force_fat32:
+            fat_header = FAT12Header()
+            fat_header.parse_header(boot_sector[36:][:26])
+            return fat_header
+        elif self.fat_type == self.FAT_TYPE_FAT32 or force_fat32:
+            # FAT32, probably - probe for it
+            if self.bpb_header["BPB_FATSz16"] != 0:
+                raise PyFATException(f"Invalid BPB_FATSz16 value of "
+                                     f"'{self.bpb_header['BPB_FATSz16']}', "
+                                     f"filesystem corrupt?",
+                                     errno=errno.EINVAL)
 
-    def __parse_fat32_header(self):
-        """Parse FAT32 header."""
-        with self.__lock:
-            self.__seek(0)
-            boot_sector = self.__fp.read(512)
+            fat_header = FAT32Header()
+            fat_header.parse_header(boot_sector[36:][:54])
+            return fat_header
 
-        header = struct.unpack(self.fat32_header_layout,
-                               boot_sector[36:][:54])
-        self.fat_header = dict(zip(self.fat32_header_vars, header))
+        raise PyFATException("Unknown FAT filesystem type, "
+                             "filesystem corrupt?", errno=errno.EINVAL)
 
     def parse_header(self):
         """Parse BPB & FAT headers in opened file."""
@@ -876,6 +938,12 @@ class PyFat(object):
 
         # Verify BPB headers
         self.__verify_bpb_header()
+
+        # Determine FAT type
+        self.fat_type = self.__determine_fat_type()
+
+        # Parse FAT type specific header
+        self.fat_header = self._parse_fat_header()
 
         # Calculate root directory sectors and starting point of root directory
         root_entries = self.bpb_header["BPB_RootEntCnt"]
@@ -890,28 +958,9 @@ class PyFat(object):
                                             num_fats)
 
         # Calculate first data sector
-        self.first_data_sector = rsvd_secs + (num_fats *
-                                              self._get_fat_size_count()) + \
-            self.root_dir_sectors
-
-        # Determine FAT type
-        self.fat_type = self.__determine_fat_type()
-
-        # Parse FAT type specific header
-        if self.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16]:
-            self.__parse_fat12_header()
-        elif self.fat_type == self.FAT_TYPE_FAT32:
-            # FAT32, probably - probe for it
-            if self.bpb_header["BPB_FATSz16"] != 0:
-                raise PyFATException(f"Invalid BPB_FATSz16 value of "
-                                     f"'{self.bpb_header['BPB_FATSz16']}', "
-                                     f"filesystem corrupt?",
-                                     errno=errno.EINVAL)
-
-            self.__parse_fat32_header()
-        else:
-            raise PyFATException("Unknown FAT filesystem type, "
-                                 "filesystem corrupt?", errno=errno.EINVAL)
+        self.first_data_sector = (rsvd_secs +
+                                  (num_fats * self._get_fat_size_count()) +
+                                  self.root_dir_sectors)
 
         # Check signature
         with self.__lock:

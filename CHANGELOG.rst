@@ -9,6 +9,12 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Added
+~~~~~
+
+* Support for dirty bit, detects unclean unmounts of a filesystem,
+  sets dirty bit on mount and clears it on unmount/close
+
 0.2.0_ - 2021-04-07
 -------------------
 
