@@ -5,6 +5,7 @@
 import errno
 import os
 import string
+import warnings
 
 from pyfatfs import FAT_OEM_ENCODING
 from pyfatfs._exceptions import PyFATException, NotAFatEntryException
@@ -43,10 +44,15 @@ class EightDotThree:
         self.encoding = encoding
         self.initialised = False
 
-    @_init_check
-    def byte_repr(self):
+    def __bytes__(self):
         """Byte representation of the 8DOT3 name dir entry headers."""
         return self.name
+
+    def byte_repr(self):
+        """Do not use."""
+        warnings.warn("byte_repr is deprecated, directly cast "
+                      "to bytes instead", DeprecationWarning)
+        return bytes(self)
 
     @_init_check
     def get_unpadded_filename(self) -> str:

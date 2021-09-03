@@ -15,6 +15,12 @@ Added
 * Support for dirty bit, detects unclean unmounts of a filesystem,
   sets dirty bit on mount and clears it on unmount/close
 
+Deprecated
+~~~~~~~~~~
+
+* Implement ``__bytes__()`` instead of ``byte_repr()``,
+  it will be removed in 1.0
+
 0.2.0_ - 2021-04-07
 -------------------
 

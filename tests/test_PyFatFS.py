@@ -73,7 +73,7 @@ class TestPyFatFS12(TestPyFatFS16, FSTestCases, TestCase):
                                  b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
                                  b'\xff\xff\xff\xff\xff\xff\xff'
                                  b'\x0f' + (b'\x00' * 432))
-        fat = pf.byte_repr()
+        fat = bytes(pf)
         self.assertEqual(expected_fat, fat)
 
         # Check that size is correct

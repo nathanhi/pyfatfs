@@ -372,12 +372,12 @@ class PyFat(object):
                                  "report this error.")
 
     @_init_check
-    def byte_repr(self) -> bytearray:
+    def __bytes__(self):
         """Represent current state of FAT as bytes.
 
         :returns: `bytes` representation of FAT.
         """
-        b = bytearray(b'')
+        b = b''
         if self.fat_type == self.FAT_TYPE_FAT12:
             fat_size = self.bpb_header["BPB_BytsPerSec"]
             fat_size *= self._get_fat_size_count()
@@ -401,6 +401,12 @@ class PyFat(object):
             for c in self.fat:
                 b += struct.pack(fmt, c)
         return b
+
+    def byte_repr(self) -> bytearray:
+        """Do not use."""
+        warnings.warn("byte_repr is deprecated, directly cast "
+                      "to bytes instead", DeprecationWarning)
+        return bytearray(bytes(self))
 
     @_init_check
     @_readonly_check
@@ -498,7 +504,7 @@ class PyFat(object):
         for i in range(self.bpb_header["BPB_NumFATS"]):
             with self.__lock:
                 self.__seek(first_fat_bytes + (i * fat_size))
-                self.__fp.write(self.byte_repr())
+                self.__fp.write(bytes(self))
 
     def calc_num_clusters(self, size: int = 0) -> int:
         """Calculate the number of required clusters.
@@ -593,7 +599,7 @@ class PyFat(object):
         dir_entries = b''
         d, f, s = dir_entry.get_entries()
         for d in list(itertools.chain(d, f, s)):
-            dir_entries += d.byte_repr()
+            dir_entries += bytes(d)
 
         # Write content
         if not is_root_dir or self.fat_type == self.FAT_TYPE_FAT32:

@@ -3,6 +3,7 @@
 """Directory entry operations with PyFAT."""
 import posixpath
 import struct
+import warnings
 
 from pyfatfs.DosDateTime import DosDateTime
 from pyfatfs.EightDotThree import EightDotThree
@@ -177,20 +178,20 @@ class FATDirectoryEntry:
         self.fstcluslo = (first_cluster >> (16 * 0) & 0xFFFF)
         self.fstclushi = (first_cluster >> (16 * 1) & 0xFFFF)
 
-    def byte_repr(self):
+    def __bytes__(self):
         """Represent directory entry as bytes.
 
         Note: Also represents accompanying LFN entries
 
         :returns: Entry & LFN entry as bytes-object
         """
-        name = self.name.byte_repr()
+        name = bytes(self.name)
         if name[0] == 0xE5:
             name[0] = 0x05
 
         entry = b''
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
-            entry += self.lfn_entry.byte_repr()
+            entry += bytes(self.lfn_entry)
 
         entry += struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr,
                              self.ntres, self.crttimetenth, self.crttime,
@@ -199,6 +200,12 @@ class FATDirectoryEntry:
                              self.fstcluslo, self.filesize)
 
         return entry
+
+    def byte_repr(self):
+        """Do not use."""
+        warnings.warn("byte_repr is deprecated, directly cast "
+                      "to bytes instead", DeprecationWarning)
+        return bytes(self)
 
     def _add_parent(self, cls):
         """Add parent directory link to current directory entry.
@@ -491,7 +498,7 @@ class FATLongDirectoryEntry(object):
                            reverse=reverse):
             yield e
 
-    def byte_repr(self):
+    def __bytes__(self):
         """Represent LFN entries as bytes."""
         entries_bytes = b""
         for e in self.get_entries(reverse=True):
@@ -501,6 +508,12 @@ class FATLongDirectoryEntry(object):
                                          e["LDIR_Chksum"], e["LDIR_Name2"],
                                          e["LDIR_FstClusLO"], e["LDIR_Name3"])
         return entries_bytes
+
+    def byte_repr(self):
+        """Do not use."""
+        warnings.warn("byte_repr is deprecated, directly cast "
+                      "to bytes instead", DeprecationWarning)
+        return bytes(self)
 
     def __str__(self):
         """Remove padding from LFN entry and decode it.
