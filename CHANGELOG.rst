@@ -9,6 +9,9 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+0.3.0_ - 2021-09-04
+-------------------
+
 Added
 ~~~~~
 
@@ -83,6 +86,7 @@ Fixed
 * `PR #3 <https://github.com/nathanhi/pyfatfs/pull/3>`_: Fix reading from a file and implement arbitrary write by `@koolkdev <https://github.com/koolkdev>`_
 
 .. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v0.2.0...HEAD
+.. _0.3.0: https://github.com/nathanhi/pyfatfs/compare/v0.2.0...v0.3.0
 .. _0.2.0: https://github.com/nathanhi/pyfatfs/compare/v0.1.2...v0.2.0
 .. _0.1.2: https://github.com/nathanhi/pyfatfs/compare/v0.1.1...v0.1.2
 .. _0.1.1: https://github.com/nathanhi/pyfatfs/compare/v0.1.0...v0.1.1
