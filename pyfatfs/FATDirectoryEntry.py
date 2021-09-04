@@ -277,7 +277,7 @@ class FATDirectoryEntry:
         if self._parent is None:
             return "/"
 
-        return posixpath.join(list(reversed(
+        return posixpath.join(*list(reversed(
             self._parent._get_parent_dir(parent_dirs))))
 
     def get_parent_dir(self):
