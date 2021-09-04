@@ -4,6 +4,7 @@
 import posixpath
 import struct
 import warnings
+from time import timezone
 
 from pyfatfs.DosDateTime import DosDateTime
 from pyfatfs.EightDotThree import EightDotThree
@@ -48,11 +49,12 @@ class FATDirectoryEntry:
                           "DIR_WrtDate", "DIR_FstClusLO",
                           "DIR_FileSize"]
 
-    def __init__(self, DIR_Name, DIR_Attr, DIR_NTRes, DIR_CrtTimeTenth,
-                 DIR_CrtTime, DIR_CrtDate, DIR_LstAccessDate,
-                 DIR_FstClusHI, DIR_WrtTime, DIR_WrtDate, DIR_FstClusLO,
-                 DIR_FileSize, encoding: str = FAT_OEM_ENCODING,
-                 lfn_entry=None):
+    def __init__(self, DIR_Name: EightDotThree, DIR_Attr: int,
+                 DIR_NTRes: int, DIR_CrtTimeTenth: int,
+                 DIR_CrtTime: int, DIR_CrtDate: int, DIR_LstAccessDate: int,
+                 DIR_FstClusHI: int, DIR_WrtTime: int, DIR_WrtDate: int,
+                 DIR_FstClusLO: int, DIR_FileSize: int,
+                 encoding: str = FAT_OEM_ENCODING, lfn_entry=None):
         """FAT directory entry constructor.
 
         :param DIR_Name: `EightDotThree` class instance
@@ -91,6 +93,40 @@ class FATDirectoryEntry:
 
         self.__dirs = set()
         self.__encoding = encoding
+
+    @staticmethod
+    def new(name: EightDotThree, tz: timezone, encoding: str,
+            attr: int = 0, ntres: int = 0, cluster: int = 0,
+            filesize: int = 0) -> "FATDirectoryEntry":
+        """Create a new directory entry with sane defaults.
+
+        :param name: ``EightDotThree``: SFN of new dentry
+        :param tz: ``timezone``: Timezone value to use for new timestamp
+        :param encoding: ``str``: Encoding for SFN
+        :param attr: ``int``: Directory attributes
+        :param ntres: ``int``: Reserved NT directory attributes
+        :param cluster: ``int``: Cluster number of dentry
+        :param filesize: ``int``: Size of file referenced by dentry
+        :returns: ``FATDirectoryEntry`` instance
+        """
+        dt = DosDateTime.now(tz=tz)
+        dentry = FATDirectoryEntry(
+            DIR_Name=name,
+            DIR_Attr=attr,
+            DIR_NTRes=ntres,
+            DIR_CrtTimeTenth=0,
+            DIR_CrtTime=dt.serialize_time(),
+            DIR_CrtDate=dt.serialize_date(),
+            DIR_LstAccessDate=dt.serialize_date(),
+            DIR_FstClusHI=0x00,
+            DIR_WrtTime=dt.serialize_time(),
+            DIR_WrtDate=dt.serialize_date(),
+            DIR_FstClusLO=0x00,
+            DIR_FileSize=filesize,
+            encoding=encoding
+        )
+        dentry.set_cluster(cluster)
+        return dentry
 
     def get_ctime(self) -> DosDateTime:
         """Get dentry creation time."""
@@ -440,7 +476,7 @@ class FATDirectoryEntry:
                              f"file or directory!", errno=errno.ENOENT)
 
     def __repr__(self):
-        """String-represent directory entry by (preferrably) LFN.
+        """String-represent directory entry by (preferably) LFN.
 
         :returns: str: Long file name if existing, 8DOT3 otherwise
         """

@@ -4,6 +4,7 @@
 import datetime
 import posixpath
 import errno
+from copy import copy
 
 from fs.base import FS
 from fs.mode import Mode
@@ -174,7 +175,7 @@ class PyFatFS(FS):
         basename = "/".join(path.split("/")[:-1])
         dirname = path.split("/")[-1]
 
-        # Plausability checks
+        # Plausibility checks
         try:
             self.opendir(basename)
         except DirectoryExpected:
@@ -202,21 +203,8 @@ class PyFatFS(FS):
         n = short_name.make_8dot3_name(dirname, base)
         short_name.set_str_name(n)
 
-        dt = DosDateTime.now(tz=self.tz)
-
-        newdir = FATDirectoryEntry(DIR_Name=short_name,
-                                   DIR_Attr=0,
-                                   DIR_NTRes=0,
-                                   DIR_CrtTimeTenth=0,
-                                   DIR_CrtTime=dt.serialize_time(),
-                                   DIR_CrtDate=dt.serialize_date(),
-                                   DIR_LstAccessDate=dt.serialize_date(),
-                                   DIR_FstClusHI=0x00,
-                                   DIR_WrtTime=dt.serialize_time(),
-                                   DIR_WrtDate=dt.serialize_date(),
-                                   DIR_FstClusLO=0x00,
-                                   DIR_FileSize=0,
-                                   encoding=self.fs.encoding)
+        newdir = FATDirectoryEntry.new(name=short_name, tz=self.tz,
+                                       encoding=self.fs.encoding)
 
         # Create LFN entry if required
         _sfn = short_name.get_unpadded_filename()
@@ -244,7 +232,7 @@ class PyFatFS(FS):
         base = split(path)[0]
         dirname = split(path)[1]
 
-        # Plausability checks
+        # Plausibility checks
         try:
             self.opendir(base)
         except DirectoryExpected:
@@ -269,21 +257,9 @@ class PyFatFS(FS):
         n = short_name.make_8dot3_name(dirname, base)
         short_name.set_str_name(n)
 
-        dt = DosDateTime.now(tz=self.tz)
-
-        newdir = FATDirectoryEntry(DIR_Name=short_name,
-                                   DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                                   DIR_NTRes=0,
-                                   DIR_CrtTimeTenth=0,
-                                   DIR_CrtTime=dt.serialize_time(),
-                                   DIR_CrtDate=dt.serialize_date(),
-                                   DIR_LstAccessDate=dt.serialize_date(),
-                                   DIR_FstClusHI=0x00,
-                                   DIR_WrtTime=dt.serialize_time(),
-                                   DIR_WrtDate=dt.serialize_date(),
-                                   DIR_FstClusLO=0x00,
-                                   DIR_FileSize=0,
-                                   encoding=self.fs.encoding)
+        newdir = FATDirectoryEntry.new(name=short_name, tz=self.tz,
+                                       attr=FATDirectoryEntry.ATTR_DIRECTORY,
+                                       encoding=self.fs.encoding)
 
         # Create LFN entry if required
         _sfn = short_name.get_unpadded_filename()
@@ -298,36 +274,19 @@ class PyFatFS(FS):
         newdir.set_cluster(first_cluster)
         dot_sn = EightDotThree()
         dot_sn.set_byte_name(b".          ")
-        dot = FATDirectoryEntry(DIR_Name=dot_sn,
-                                DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                                DIR_NTRes=newdir.ntres,
-                                DIR_CrtTimeTenth=newdir.crttimetenth,
-                                DIR_CrtTime=newdir.crttime,
-                                DIR_CrtDate=newdir.crtdate,
-                                DIR_LstAccessDate=newdir.lstaccessdate,
-                                DIR_FstClusHI=newdir.fstclushi,
-                                DIR_WrtTime=newdir.wrttime,
-                                DIR_WrtDate=newdir.wrtdate,
-                                DIR_FstClusLO=newdir.fstcluslo,
-                                DIR_FileSize=newdir.filesize,
-                                encoding=self.fs.encoding)
+        dot = copy(newdir)
+        dot.name = dot_sn
+        dot.lfn_entry = None
+        dot._parent = None
+
         dotdot_sn = EightDotThree()
         dotdot_sn.set_byte_name(b"..         ")
-        base_fstclushi = base.fstclushi if not parent_is_root else 0x0
-        base_fstcluslo = base.fstcluslo if not parent_is_root else 0x0
-        dotdot = FATDirectoryEntry(DIR_Name=dotdot_sn,
-                                   DIR_Attr=FATDirectoryEntry.ATTR_DIRECTORY,
-                                   DIR_NTRes=base.ntres,
-                                   DIR_CrtTimeTenth=base.crttimetenth,
-                                   DIR_CrtTime=base.crttime,
-                                   DIR_CrtDate=base.crtdate,
-                                   DIR_LstAccessDate=base.lstaccessdate,
-                                   DIR_FstClusHI=base_fstclushi,
-                                   DIR_WrtTime=base.wrttime,
-                                   DIR_WrtDate=base.wrtdate,
-                                   DIR_FstClusLO=base_fstcluslo,
-                                   DIR_FileSize=base.filesize,
-                                   encoding=self.fs.encoding)
+        dotdot = copy(base)
+        dotdot.name = dotdot_sn
+        dotdot.lfn_entry = None
+        dotdot._parent = None
+        if parent_is_root:
+            dotdot.set_cluster(0)
         newdir.add_subdirectory(dot)
         newdir.add_subdirectory(dotdot)
 

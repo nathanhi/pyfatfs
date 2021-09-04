@@ -9,6 +9,16 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Added
+~~~~~
+
+* static ``new`` method for ``FATDirectoryEntry``
+
+Fixed
+~~~~~
+
+* Remove duplicated code
+
 0.3.1_ - 2021-09-04
 -------------------
 
