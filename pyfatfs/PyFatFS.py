@@ -199,7 +199,7 @@ class PyFatFS(FS):
                 return True
 
         # Determine 8DOT3 file name + LFN
-        short_name = EightDotThree()
+        short_name = EightDotThree(encoding=self.fs.encoding)
         n = short_name.make_8dot3_name(dirname, base)
         short_name.set_str_name(n)
 
@@ -253,7 +253,7 @@ class PyFatFS(FS):
         parent_is_root = base == self.fs.root_dir
 
         # Determine 8DOT3 file name + LFN
-        short_name = EightDotThree()
+        short_name = EightDotThree(encoding=self.fs.encoding)
         n = short_name.make_8dot3_name(dirname, base)
         short_name.set_str_name(n)
 

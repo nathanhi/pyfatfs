@@ -4,7 +4,6 @@
 
 import errno
 import os
-import string
 import warnings
 
 from pyfatfs import FAT_OEM_ENCODING, _init_check
@@ -17,9 +16,11 @@ class EightDotThree:
     #: Length of the byte representation in a directory entry header
     SFN_LENGTH = 11
 
-    #: Valid characters for 8.3 file names
-    VALID_CHARACTERS = f"{string.ascii_letters.upper()}{string.digits}" \
-                       "!#$%&'()-@^_`{}~"
+    #: Invalid characters for 8.3 file names
+    INVALID_CHARACTERS = [range(0x0, 0x20)] + [0x22, 0x2A, 0x2B, 0x2C, 0x2E,
+                                               0x2F, 0x3A, 0x3B, 0x3C, 0x3D,
+                                               0x3E, 0x3F, 0x5B, 0x5C, 0x5D,
+                                               0x7C]
 
     def __init__(self, encoding: str = FAT_OEM_ENCODING):
         """Offer 8DOT3 filename operation.
@@ -96,7 +97,7 @@ class EightDotThree:
             raise TypeError(f"Given parameter must be of type str,"
                             f"but got {type(name)} instead.")
 
-        if not self.is_8dot3_conform(name):
+        if not self.is_8dot3_conform(name, self.encoding):
             self.__raise_8dot3_nonconformant(name)
 
         name = self._pad_8dot3_name(name)
@@ -115,25 +116,25 @@ class EightDotThree:
         return chksum
 
     @staticmethod
-    def __check_characters(name: str) -> bool:
+    def __check_characters(name: str, encoding: str) -> bool:
         """Test if given string contains invalid chars for 8.3 names.
 
         :param name: `str`: Filename to parse
         :raises: `ValueError` if the given string contains invalid
                  8.3 filename characters.
         """
-        vc = EightDotThree.VALID_CHARACTERS
-        n = ''.join(filter(lambda x: x in vc, name))
-        if n != name:
-            raise ValueError(f"Invalid characters in string '{name}', "
-                             f"cannot be used as part of an 8.3 "
-                             f"conform file name.")
+        for c in name:
+            if c.encode(encoding) in EightDotThree.INVALID_CHARACTERS:
+                raise ValueError(f"Invalid characters in string '{name}', "
+                                 f"cannot be used as part of an 8.3 "
+                                 f"conform file name.")
 
     @staticmethod
-    def is_8dot3_conform(entry_name: str):
+    def is_8dot3_conform(entry_name: str, encoding: str = FAT_OEM_ENCODING):
         """Indicate conformance of given entries name to 8.3 standard.
 
         :param entry_name: Name of entry to check
+        :param encoding: ``str``: Encoding for SFN
         :returns: bool indicating conformance of name to 8.3 standard
         """
         if entry_name != entry_name.upper():
@@ -150,7 +151,7 @@ class EightDotThree:
         # Check for valid characters in both filename segments
         for i in [root, ext]:
             try:
-                EightDotThree.__check_characters(i)
+                EightDotThree.__check_characters(i, encoding=encoding)
             except ValueError:
                 return False
 
@@ -200,7 +201,7 @@ class EightDotThree:
             char = char.upper()
             if char == ' ':
                 return ''
-            if char not in EightDotThree.VALID_CHARACTERS:
+            if char in EightDotThree.INVALID_CHARACTERS:
                 return '_'
             return char
 

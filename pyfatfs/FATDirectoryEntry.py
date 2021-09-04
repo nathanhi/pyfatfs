@@ -221,7 +221,7 @@ class FATDirectoryEntry:
 
         :returns: Entry & LFN entry as bytes-object
         """
-        name = bytes(self.name)
+        name = bytearray(bytes(self.name))
         if name[0] == 0xE5:
             name[0] = 0x05
 
@@ -637,7 +637,7 @@ class FATLongDirectoryEntry(object):
 
 
 def make_lfn_entry(dir_name: str,
-                   short_name):
+                   short_name: EightDotThree):
     """Generate a `FATLongDirectoryEntry` instance from directory name.
 
     :param dir_name: Long name of directory
@@ -652,7 +652,8 @@ def make_lfn_entry(dir_name: str,
     dir_name = dir_name.encode(FAT_LFN_ENCODING)
     dir_name_modulus = len(dir_name) % lfn_entry_length
 
-    if EightDotThree.is_8dot3_conform(dir_name_str):
+    if EightDotThree.is_8dot3_conform(dir_name_str,
+                                      encoding=short_name.encoding):
         raise PyFATException("Directory entry is already 8.3 conform, "
                              "no need to create an LFN entry.",
                              errno=errno.EINVAL)

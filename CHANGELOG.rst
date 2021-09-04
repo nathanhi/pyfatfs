@@ -18,6 +18,7 @@ Fixed
 ~~~~~
 
 * Remove duplicated code
+* Properly handle non-ASCII short file names / 8DOT3
 
 0.3.1_ - 2021-09-04
 -------------------
