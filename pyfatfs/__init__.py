@@ -16,6 +16,21 @@ __license__ = 'MIT License'
 
 
 #: Specifies default ("OEM") encoding
+from pyfatfs._exceptions import PyFATException
+
 FAT_OEM_ENCODING = 'ibm437'
 #: Specifies the long file name encoding, which is always UTF-16 (LE)
 FAT_LFN_ENCODING = 'utf-16-le'
+
+
+def _init_check(func):
+    def _wrapper(*args, **kwargs):
+        initialised = args[0].initialised
+
+        if initialised is True:
+            return func(*args, **kwargs)
+        else:
+            raise PyFATException("Class has not yet been fully initialised, "
+                                 "please instantiate first.")
+
+    return _wrapper

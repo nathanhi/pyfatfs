@@ -15,24 +15,11 @@ from contextlib import contextmanager
 from io import BufferedReader, open
 from typing import Union
 
-from pyfatfs import FAT_OEM_ENCODING
+from pyfatfs import FAT_OEM_ENCODING, _init_check
 from pyfatfs.EightDotThree import EightDotThree
 from pyfatfs.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
 from pyfatfs.FATHeader import FATHeader, FAT32Header, FAT12Header
 from pyfatfs._exceptions import PyFATException, NotAFatEntryException
-
-
-def _init_check(func):
-    def _wrapper(*args, **kwargs):
-        initialised = args[0].initialised
-
-        if initialised is True:
-            return func(*args, **kwargs)
-        else:
-            raise PyFATException("Class has not yet been fully initialised, "
-                                 "please instantiate first.")
-
-    return _wrapper
 
 
 def _readonly_check(func):

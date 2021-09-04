@@ -7,21 +7,8 @@ import os
 import string
 import warnings
 
-from pyfatfs import FAT_OEM_ENCODING
+from pyfatfs import FAT_OEM_ENCODING, _init_check
 from pyfatfs._exceptions import PyFATException, NotAFatEntryException
-
-
-def _init_check(func):
-    def _wrapper(*args, **kwargs):
-        initialised = args[0].initialised
-
-        if initialised is True:
-            return func(*args, **kwargs)
-        else:
-            raise PyFATException("Class has not yet been fully initialised, "
-                                 "please instantiate first.")
-
-    return _wrapper
 
 
 class EightDotThree:
