@@ -126,8 +126,9 @@ class PyFat(object):
         """
         self.__fp = None
         self.__fp_offset = offset
+        self._fat_size = 0
         self.bpb_header = None
-        self.fat_header = None
+        self.fat_header: FATHeader = FATHeader()
         self.root_dir = None
         self.root_dir_sector = 0
         self.root_dir_sectors = 0
@@ -289,7 +290,7 @@ class PyFat(object):
         """Parse information in FAT."""
         # Read all FATs
         fat_size = self.bpb_header["BPB_BytsPerSec"]
-        fat_size *= self._get_fat_size_count()
+        fat_size *= self._fat_size
 
         # Seek FAT entries
         first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"]
@@ -311,8 +312,7 @@ class PyFat(object):
         self.bytes_per_cluster = self.bpb_header["BPB_BytsPerSec"] * \
             self.bpb_header["BPB_SecPerClus"]
 
-        if len(fats[0]) != self.bpb_header["BPB_BytsPerSec"] * \
-                self._get_fat_size_count():
+        if len(fats[0]) != self.bpb_header["BPB_BytsPerSec"] * self._fat_size:
             raise PyFATException("Invalid length of FAT")
 
         # FAT12: 12 bits (1.5 bytes) per FAT entry
@@ -379,9 +379,6 @@ class PyFat(object):
         """
         b = b''
         if self.fat_type == self.FAT_TYPE_FAT12:
-            fat_size = self.bpb_header["BPB_BytsPerSec"]
-            fat_size *= self._get_fat_size_count()
-
             for i, e in enumerate(self.fat):
                 if i % 2 == 0:
                     b += struct.pack("<H", e)
@@ -496,15 +493,16 @@ class PyFat(object):
     def flush_fat(self) -> None:
         """Flush FAT(s) to disk."""
         fat_size = self.bpb_header["BPB_BytsPerSec"]
-        fat_size *= self._get_fat_size_count()
+        fat_size *= self._fat_size
 
         first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"]
         first_fat_bytes *= self.bpb_header["BPB_BytsPerSec"]
 
-        for i in range(self.bpb_header["BPB_NumFATS"]):
-            with self.__lock:
+        with self.__lock:
+            binary_fat = bytes(self)
+            for i in range(self.bpb_header["BPB_NumFATS"]):
                 self.__seek(first_fat_bytes + (i * fat_size))
-                self.__fp.write(bytes(self))
+                self.__fp.write(binary_fat)
 
     def calc_num_clusters(self, size: int = 0) -> int:
         """Calculate the number of required clusters.
@@ -871,7 +869,7 @@ class PyFat(object):
             total_sectors = self.bpb_header["BPB_TotSec32"]
 
         rsvd_sectors = self.bpb_header["BPB_RsvdSecCnt"]
-        fat_sz = self.bpb_header["BPB_NumFATS"] * self._get_fat_size_count()
+        fat_sz = self.bpb_header["BPB_NumFATS"] * self._fat_size
         root_dir_sectors = self.root_dir_sectors
         data_sec = total_sectors - (rsvd_sectors + fat_sz + root_dir_sectors)
         count_of_clusters = data_sec // self.bpb_header["BPB_SecPerClus"]
@@ -946,6 +944,7 @@ class PyFat(object):
         self.__verify_bpb_header()
 
         # Determine FAT type
+        self._fat_size = self._get_fat_size_count()
         self.fat_type = self.__determine_fat_type()
 
         # Parse FAT type specific header
@@ -960,12 +959,10 @@ class PyFat(object):
 
         self.root_dir_sectors = ((root_entries * hdr_size) +
                                  (bytes_per_sec - 1)) // bytes_per_sec
-        self.root_dir_sector = rsvd_secs + (self._get_fat_size_count() *
-                                            num_fats)
+        self.root_dir_sector = rsvd_secs + (self._fat_size * num_fats)
 
         # Calculate first data sector
-        self.first_data_sector = (rsvd_secs +
-                                  (num_fats * self._get_fat_size_count()) +
+        self.first_data_sector = (rsvd_secs + (num_fats * self._fat_size) +
                                   self.root_dir_sectors)
 
         # Check signature

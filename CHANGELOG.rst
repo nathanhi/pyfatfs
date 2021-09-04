@@ -13,6 +13,7 @@ Fixed
 ~~~~~
 
 * Fix performance regression on FAT16/32 when serializing a FAT to disk via ``__bytes__``
+* Improve performance by only parsing fat size once on open() instead of multiple times
 
 0.3.0_ - 2021-09-04
 -------------------
