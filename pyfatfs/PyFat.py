@@ -393,13 +393,13 @@ class PyFat(object):
 
         else:
             if self.fat_type == self.FAT_TYPE_FAT16:
-                fmt = "<H"
+                fmt = "H"
             else:
                 # FAT32
-                fmt = "<L"
+                fmt = "L"
 
-            for c in self.fat:
-                b += struct.pack(fmt, c)
+            b = struct.pack(f"<{fmt * len(self.fat)}",
+                            *self.fat)
         return b
 
     def byte_repr(self) -> bytearray:

@@ -9,6 +9,11 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Fixed
+~~~~~
+
+* Fix performance regression on FAT16/32 when serializing a FAT to disk via ``__bytes__``
+
 0.3.0_ - 2021-09-04
 -------------------
 
