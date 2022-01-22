@@ -186,6 +186,8 @@ class FATDirectoryEntry:
         sz = self.FAT_DIRECTORY_HEADER_SIZE
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
             sz *= len(self.lfn_entry.lfn_entries)
+        sz += self.FAT_DIRECTORY_HEADER_SIZE * len(self.__dirs)+1
+
         return sz
 
     def get_size(self):
@@ -193,11 +195,6 @@ class FATDirectoryEntry:
 
         :returns: Filesize or directory entry size in bytes as int
         """
-        if self.is_directory():
-            sz = self.FAT_DIRECTORY_HEADER_SIZE
-            sz *= len(self.__dirs)+1
-            return sz
-
         return self.filesize
 
     def set_size(self, size: int):
@@ -454,12 +451,21 @@ class FATDirectoryEntry:
         dir_entry._add_parent(self)
         self.__dirs.add(dir_entry)
 
+    def mark_empty(self):
+        """Mark this directory entry as empty."""
+        # Also mark LFN entries as empty
+        try:
+            self.lfn_entry.mark_empty()
+        except AttributeError:
+            pass
+
+        self.name.name[0] = self.FREE_DIR_ENTRY_MARK
+
     def remove_dir_entry(self, name):
         """Remove given dir_entry from dir list.
 
         **NOTE:** This will also remove special entries such
         as ».«, »..« and volume labels!
-
         """
         d, f, s = self.get_entries()
 
@@ -535,6 +541,12 @@ class FATLongDirectoryEntry(object):
                            key=lambda x: x[1]["LDIR_Ord"],
                            reverse=reverse):
             yield e
+
+    def mark_empty(self):
+        """Mark LFN entry as empty."""
+        free_dir_entry_mark = FATDirectoryEntry.FREE_DIR_ENTRY_MARK
+        for k in self.lfn_entries.keys():
+            self.lfn_entries[k]["LDIR_Ord"] = free_dir_entry_mark
 
     def __bytes__(self):
         """Represent LFN entries as bytes."""

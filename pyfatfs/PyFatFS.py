@@ -382,8 +382,13 @@ class PyFatFS(FS):
         parent_dir.remove_dir_entry(str(dir_entry))
         self.fs.update_directory_entry(parent_dir)
 
+        # Mark dentry as free
+        dir_entry.mark_empty()
+        if dir_entry.is_directory():
+            self.fs.update_directory_entry(dir_entry)
+
         # Free cluster in FAT
-        if dir_entry.get_size() > 0 and dir_entry.get_cluster() != 0:
+        if dir_entry.get_entry_size() > 0 and dir_entry.get_cluster() != 0:
             # Empty files have a cluster ID of 0
             self.fs.free_cluster_chain(dir_entry.get_cluster())
         del dir_entry
