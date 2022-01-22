@@ -193,7 +193,10 @@ class PyFatFS(FS):
                 return False
             else:
                 # Clean up existing file contents
-                # TODO: touch {a,m}time
+                dt = DosDateTime.now(tz=self.tz)
+                dentry.wrttime = dt.serialize_time()
+                dentry.wrtdate = dt.serialize_date()
+                dentry.lstaccessdate = dt.serialize_date()
                 dentry.set_size(0)
                 old_cluster = dentry.get_cluster()
                 dentry.set_cluster(0)

@@ -4,6 +4,7 @@
 
 import gzip
 import os
+from datetime import datetime
 from functools import lru_cache
 from io import BytesIO
 from unittest import TestCase, mock
@@ -46,6 +47,16 @@ class TestPyFatFS16(FSTestCases, TestCase):
         self.fs.create("/test")
         with self.assertRaises(fs.errors.DirectoryExists):
             self.fs.makedir("/test", recreate=True)
+
+    def test_create_wipe_update_mtime(self):
+        """Verify that file creation updates mtime on wipe."""
+        self.fs.create("/test")
+        self.fs.settimes("/test", datetime(1999, 12, 31, 23, 59, 59, 9999),
+                         datetime(2000, 1, 1, 0, 0, 0, 0))
+        orig_info = self.fs.getinfo("/test")
+        self.fs.create("/test", wipe=True)
+        new_info = self.fs.getinfo("/test")
+        assert orig_info != new_info
 
 
 class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase):
