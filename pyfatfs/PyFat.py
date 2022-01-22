@@ -386,12 +386,6 @@ class PyFat(object):
                             *self.fat)
         return b
 
-    def byte_repr(self) -> bytearray:
-        """Do not use."""
-        warnings.warn("byte_repr is deprecated, directly cast "
-                      "to bytes instead", DeprecationWarning)
-        return bytearray(bytes(self))
-
     @_init_check
     @_readonly_check
     def _write_data_to_address(self, data: bytes,

@@ -3,7 +3,7 @@
 """Directory entry operations with PyFAT."""
 import posixpath
 import struct
-import warnings
+
 from time import timezone
 
 from pyfatfs.DosDateTime import DosDateTime
@@ -235,12 +235,6 @@ class FATDirectoryEntry:
                              self.fstcluslo, self.filesize)
 
         return entry
-
-    def byte_repr(self):
-        """Do not use."""
-        warnings.warn("byte_repr is deprecated, directly cast "
-                      "to bytes instead", DeprecationWarning)
-        return bytes(self)
 
     def _add_parent(self, cls):
         """Add parent directory link to current directory entry.
@@ -558,12 +552,6 @@ class FATLongDirectoryEntry(object):
                                          e["LDIR_Chksum"], e["LDIR_Name2"],
                                          e["LDIR_FstClusLO"], e["LDIR_Name3"])
         return entries_bytes
-
-    def byte_repr(self):
-        """Do not use."""
-        warnings.warn("byte_repr is deprecated, directly cast "
-                      "to bytes instead", DeprecationWarning)
-        return bytes(self)
 
     def __str__(self):
         """Remove padding from LFN entry and decode it.

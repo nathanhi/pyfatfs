@@ -29,6 +29,13 @@ Changed
 * In order to fix non-ASCII short file names, ``FATDirectoryEntry.name``
   is now of ``EightDotThree`` type instead of ``bytes``
 
+Removed
+~~~~~~~
+
+* Legacy ``byte_repr()`` function, ``__bytes__()`` is to be used instead
+  as a drop-in replacement to serialize FAT and dentry data for writing to
+  disk
+
 0.3.1_ - 2021-09-04
 -------------------
 
