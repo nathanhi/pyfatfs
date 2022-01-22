@@ -8,6 +8,7 @@ from functools import lru_cache
 from io import BytesIO
 from unittest import TestCase, mock
 
+import fs.errors
 from fs.test import FSTestCases
 
 from pyfatfs.PyFat import PyFat
@@ -33,6 +34,18 @@ class TestPyFatFS16(FSTestCases, TestCase):
             mock_open.return_value = BytesIO(self.__read_fsimg(img_file))
             return PyFatFS("/this/does/not/exist.img",
                            encoding='UTF-8')
+
+    def test_create_file_folder_dupe(self):
+        """Verify that file creation with duplicate name to a folder fails."""
+        self.fs.makedir("/test")
+        with self.assertRaises(fs.errors.FileExpected):
+            self.fs.create("/test")
+
+    def test_create_folder_file_dupe(self):
+        """Verify that folder creation with duplicate name to a file fails."""
+        self.fs.create("/test")
+        with self.assertRaises(fs.errors.DirectoryExists):
+            self.fs.makedir("/test", recreate=True)
 
 
 class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase):

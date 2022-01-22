@@ -20,6 +20,8 @@ Fixed
 * Remove duplicated code
 * Properly handle non-ASCII short file names / 8DOT3
 * Mark dir/file entries as empty on deletion
+* Do not allow creating files when a folder with the same name already exists
+* Do not allow creating folders when a file with the same name already exists
 
 Changed
 ~~~~~~~

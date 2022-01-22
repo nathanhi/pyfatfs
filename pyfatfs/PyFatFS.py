@@ -187,6 +187,8 @@ class PyFatFS(FS):
         except ResourceNotFound:
             pass
         else:
+            if dentry.is_directory():
+                raise FileExpected(path)
             if not wipe:
                 return False
             else:
@@ -240,14 +242,13 @@ class PyFatFS(FS):
         base = self._get_dir_entry(base)
 
         try:
-            self._get_dir_entry(path)
+            dentry = self._get_dir_entry(path)
         except ResourceNotFound:
             pass
         else:
-            if not recreate:
+            if not recreate or not dentry.is_directory():
                 raise DirectoryExists(path)
             else:
-                # TODO: Update mtime
                 return SubFS(self, path)
 
         parent_is_root = base == self.fs.root_dir
