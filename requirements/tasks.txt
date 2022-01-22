@@ -58,7 +58,7 @@ packaging==20.9
     #   sphinx
 pep517==0.10.0
     # via pip-tools
-pip-tools==6.0.1
+pip-tools==6.4.0
     # via -r requirements/in/tasks.in
 pkginfo==1.7.0
     # via twine
