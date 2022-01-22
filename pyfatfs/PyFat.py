@@ -721,10 +721,10 @@ class PyFat(object):
             except NotAFatEntryException as ex:
                 # Not a directory of any kind, invalidate temporary LFN entries
                 tmp_lfn_entry = FATLongDirectoryEntry()
-                if ex.free_type == ex.FREE_ENTRY:
+                if ex.free_type == FATDirectoryEntry.FREE_DIR_ENTRY_MARK:
                     # Empty directory entry,
                     continue
-                elif ex.free_type == ex.LAST_ENTRY:
+                elif ex.free_type == FATDirectoryEntry.LAST_DIR_ENTRY_MARK:
                     # Last directory entry, do not parse any further
                     break
             else:

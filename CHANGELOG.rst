@@ -20,6 +20,12 @@ Fixed
 * Remove duplicated code
 * Properly handle non-ASCII short file names / 8DOT3
 
+Changed
+~~~~~~~
+
+* In order to fix non-ASCII short file names, ``FATDirectoryEntry.name``
+  is now of ``EightDotThree`` type instead of ``bytes``
+
 0.3.1_ - 2021-09-04
 -------------------
 

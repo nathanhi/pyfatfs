@@ -28,13 +28,26 @@ class EightDotThree:
         :param encoding: Codepage for the 8.3 filename.
                          Defaults to `FAT_OEM_ENCODING` as per FAT spec.
         """
-        self.name: bytes = None
+        self.name: bytearray = None
         self.encoding = encoding
         self.initialised = False
 
+    def __str__(self):
+        """Decode and un-pad SFN string."""
+        name = self.name
+        if name[0] == 0x05:
+            # Translate 0x05 to 0xE5
+            name[0] = 0xE5
+
+        base = name[:8].decode(self.encoding).rstrip()
+        ext = name[8:11].decode(self.encoding).rstrip()
+        sep = "." if len(ext) > 0 else ""
+
+        return sep.join([base, ext])
+
     def __bytes__(self):
         """Byte representation of the 8DOT3 name dir entry headers."""
-        return self.name
+        return bytes(self.name)
 
     def byte_repr(self):
         """Do not use."""
@@ -45,11 +58,7 @@ class EightDotThree:
     @_init_check
     def get_unpadded_filename(self) -> str:
         """Retrieve the human readable filename."""
-        base = self.name[:8].decode(self.encoding).rstrip()
-        ext = self.name[8:11].decode(self.encoding).rstrip()
-        sep = "." if len(ext) > 0 else ""
-
-        return sep.join([base, ext])
+        return str(self)
 
     @staticmethod
     def __raise_8dot3_nonconformant(name: str):
@@ -60,9 +69,8 @@ class EightDotThree:
 
     def __set_name(self, name: bytes):
         """Set self.name and verify for correctness."""
-        name_str = name.decode(self.encoding)
-        if len(name_str) != 11:
-            self.__raise_8dot3_nonconformant(name_str)
+        if len(name) != 11:
+            self.__raise_8dot3_nonconformant(name.decode(self.encoding))
 
         self.name = name
         self.initialised = True
@@ -76,6 +84,8 @@ class EightDotThree:
             raise TypeError(f"Given parameter must be of type bytes,"
                             f"but got {type(name)} instead.")
 
+        name = bytearray(name)
+
         if len(name) != 11:
             raise ValueError("Invalid byte name supplied, must be exactly "
                              "11 bytes long (8+3).")
@@ -84,10 +94,6 @@ class EightDotThree:
             # Empty directory entry
             raise NotAFatEntryException("Given dir entry is invalid and has "
                                         "no valid name.", free_type=name[0])
-
-        if name[0] == 0x05:
-            # Translate 0x05 to 0xE5
-            name = name.replace(bytes(0x05), bytes(0xE5), 1)
 
         self.__set_name(name)
 
@@ -100,8 +106,11 @@ class EightDotThree:
         if not self.is_8dot3_conform(name, self.encoding):
             self.__raise_8dot3_nonconformant(name)
 
-        name = self._pad_8dot3_name(name)
-        self.__set_name(name.encode(self.encoding))
+        name = bytearray(self._pad_8dot3_name(name).encode(self.encoding))
+        if name[0] == 0xE5:
+            name[0] = 0x05
+        self.name = name
+        self.initialised = True
 
     @_init_check
     def checksum(self) -> int:

@@ -18,6 +18,11 @@ import errno
 class FATDirectoryEntry:
     """Represents directory entries in FAT (files & directories)."""
 
+    #: Marks a directory entry as empty
+    FREE_DIR_ENTRY_MARK = 0xE5
+    #: Marks all directory entries after this one as empty
+    LAST_DIR_ENTRY_MARK = 0x00
+
     #: Bit set in DIR_Attr if entry is read-only
     ATTR_READ_ONLY = 0x01
     #: Bit set in DIR_Attr if entry is hidden
@@ -72,7 +77,7 @@ class FATDirectoryEntry:
         :param encoding: Encoding of filename
         :param lfn_entry: FATLongDirectoryEntry instance or None
         """
-        self.name = DIR_Name
+        self.name: EightDotThree = DIR_Name
         self.attr = int(DIR_Attr)
         self.ntres = int(DIR_NTRes)
         self.crttimetenth = int(DIR_CrtTimeTenth)
@@ -221,17 +226,14 @@ class FATDirectoryEntry:
 
         :returns: Entry & LFN entry as bytes-object
         """
-        name = bytearray(bytes(self.name))
-        if name[0] == 0xE5:
-            name[0] = 0x05
-
         entry = b''
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
             entry += bytes(self.lfn_entry)
 
-        entry += struct.pack(self.FAT_DIRECTORY_LAYOUT, name, self.attr,
-                             self.ntres, self.crttimetenth, self.crttime,
-                             self.crtdate, self.lstaccessdate,
+        entry += struct.pack(self.FAT_DIRECTORY_LAYOUT,
+                             self.name.name,
+                             self.attr, self.ntres, self.crttimetenth,
+                             self.crttime, self.crtdate, self.lstaccessdate,
                              self.fstclushi, self.wrttime, self.wrtdate,
                              self.fstcluslo, self.filesize)
 
@@ -584,7 +586,8 @@ class FATLongDirectoryEntry(object):
         lfn_attr_mask = FATDirectoryEntry.ATTR_LONG_NAME_MASK
         is_attr_set = (LDIR_Attr & lfn_attr_mask) == lfn_attr
 
-        return is_attr_set and LDIR_Ord != 0xE5
+        return is_attr_set and \
+            LDIR_Ord != FATDirectoryEntry.FREE_DIR_ENTRY_MARK
 
     def add_lfn_entry(self, LDIR_Ord, LDIR_Name1, LDIR_Attr, LDIR_Type,
                       LDIR_Chksum, LDIR_Name2, LDIR_FstClusLO, LDIR_Name3):

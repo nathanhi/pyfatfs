@@ -27,16 +27,12 @@ class BrokenLFNEntryException(PyFATException):
 class NotAFatEntryException(NotADirectoryError):
     """Custom handling for FAT `NotADirectoryError`'s."""
 
-    #: Indicates a free entry, but not an end of chain.
-    FREE_ENTRY = 0xE5
-    #: Indicates an end of directory cluster, do not search further.
-    LAST_ENTRY = 0x00
-
-    def __init__(self, msg: str, free_type=FREE_ENTRY):
+    def __init__(self, msg: str, free_type: int):
         """Construct base class for PyFAT exceptions.
 
         :param msg: Exception message describing what happened
-        :param free_type: Either `FREE_ENTRY` or `LAST_ENTRY`.
+        :param free_type: `FATDirectoryEntry._FREE_DIR_ENTRY_MARK` or
+                          `FATDirectoryEntry._LAST_DIR_ENTRY_MARK`
         """
         NotADirectoryError.__init__(self, msg)
         self.free_type = free_type
