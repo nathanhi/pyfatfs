@@ -28,7 +28,7 @@ for anyone who needs to access or modify files on a FAT filesystem. It also
 provides a low-level API that allows direct interaction with a FAT filesystem
 without PyFilesystem2 abstraction.
 
-pyfatfs supports FAT12/16/32 as well as the VFAT extension (long file names).
+pyfatfs supports FAT12/FAT16/FAT32 as well as the VFAT extension (long file names).
 
 It currently is in an early development state and expected to be unstable and
 contain bugs. On FAT32 filesystems the FSInfo struct, containing the free cluster
