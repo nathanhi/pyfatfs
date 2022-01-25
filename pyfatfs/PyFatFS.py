@@ -34,7 +34,7 @@ class PyFatFS(FS):
                  read_only: bool = False, utc: bool = False):
         """PyFilesystem2 FAT constructor, initializes self.fs.
 
-        :param filename: `str`: Name of file/device to open as FAT partition.
+        :param filename: `str`: Name of file/device, (or a file-like object), to open as FAT partition.
         :param encoding: `str`: Valid Python standard encoding.
         :param offset: `int`: Offset from file start to filesystem
                        start in bytes.

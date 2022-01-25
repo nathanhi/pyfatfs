@@ -215,7 +215,7 @@ class PyFat(object):
     def open(self, filename: str, read_only: bool = False):
         """Open filesystem for usage with PyFat.
 
-        :param filename: `str`: Name of file to open for usage with PyFat.
+        :param filename: `str`: Name of file (or a file-like object) to open for usage with PyFat.
         :param read_only: `bool`: Force read-only mode of filesystem.
         """
         self.is_read_only = read_only
@@ -226,6 +226,11 @@ class PyFat(object):
 
         try:
             self.__set_fp(open(filename, mode=mode))
+        except TypeError:
+            if hasattr(filename, 'seekable'):           #Duck-typed: this is an already-open file
+                self.__set_fp(filename)
+            else:
+                raise
         except OSError as ex:
             raise PyFATException(f"Cannot open given file \'{filename}\'.",
                                  errno=ex.errno)
