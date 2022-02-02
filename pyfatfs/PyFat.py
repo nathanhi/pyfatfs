@@ -9,17 +9,20 @@ import itertools
 import math
 import struct
 import threading
+import time
 import warnings
 
 from contextlib import contextmanager
-from io import BufferedReader, open
+from io import BufferedReader, FileIO, open
 from typing import Union
 
 from pyfatfs import FAT_OEM_ENCODING, _init_check
 from pyfatfs.EightDotThree import EightDotThree
 from pyfatfs.FATDirectoryEntry import FATDirectoryEntry, FATLongDirectoryEntry
-from pyfatfs.FATHeader import FATHeader, FAT32Header, FAT12Header
+from pyfatfs.FSInfo import FSInfo
 from pyfatfs._exceptions import PyFATException, NotAFatEntryException
+from pyfatfs.BootSectorHeader import BootSectorHeader, FAT12BootSectorHeader, \
+                                     FAT32BootSectorHeader
 
 
 def _readonly_check(func):
@@ -80,15 +83,6 @@ class PyFat(object):
                           FAT_TYPE_FAT16: FAT16_CLUSTER_VALUES,
                           FAT_TYPE_FAT32: FAT32_CLUSTER_VALUES}
 
-    #: BPB header layout in struct formatted string
-    bpb_header_layout = "<3s8sHBHBHHBHHHLL"
-    #: BPB header fields when extracted with bpb_header_layout
-    bpb_header_vars = ["BS_jmpBoot", "BS_OEMName", "BPB_BytsPerSec",
-                       "BPB_SecPerClus", "BPB_RsvdSecCnt", "BPB_NumFATS",
-                       "BPB_RootEntCnt", "BPB_TotSec16", "BPB_Media",
-                       "BPB_FATSz16", "BPB_SecPerTrk", "BPB_NumHeads",
-                       "BPB_HiddSec", "BPB_TotSec32"]
-
     #: FAT16 bit mask for clean shutdown bit
     FAT16_CLEAN_SHUTDOWN_BIT_MASK = 0x8000
     #: FAT16 bit mask for volume error bit
@@ -111,11 +105,10 @@ class PyFat(object):
         :type encoding: str
         :type offset: int
         """
-        self.__fp = None
+        self.__fp: FileIO = None
         self.__fp_offset = offset
         self._fat_size = 0
-        self.bpb_header = None
-        self.fat_header: FATHeader = FATHeader()
+        self.bpb_header: BootSectorHeader = None
         self.root_dir = None
         self.root_dir_sector = 0
         self.root_dir_sectors = 0
@@ -124,7 +117,7 @@ class PyFat(object):
         self.first_free_cluster = 0
         self.fat_type = self.FAT_TYPE_UNKNOWN
         self.fat = {}
-        self.initialised = False
+        self.initialized = False
         self.encoding = encoding
         self.is_read_only = True
         self.__lock = threading.Lock()
@@ -173,7 +166,7 @@ class PyFat(object):
             dos_dirty = (self.fat[1] &
                          clean_shutdown_bitmask) != clean_shutdown_bitmask
 
-        nt_dirty = (self.fat_header["BS_Reserved1"] &
+        nt_dirty = (self.bpb_header["BS_Reserved1"] &
                     self.FAT_DIRTY_BIT_MASK) == self.FAT_DIRTY_BIT_MASK
 
         return dos_dirty or nt_dirty
@@ -194,8 +187,8 @@ class PyFat(object):
                           (0 & clean_shutdown_bitmask)
             self.flush_fat()
 
-        self.fat_header["BS_Reserved1"] |= self.FAT_DIRTY_BIT_MASK
-        self._write_fat_header()
+        self.bpb_header["BS_Reserved1"] |= self.FAT_DIRTY_BIT_MASK
+        self._write_bpb_header()
 
     def _mark_clean(self):
         """Mark partition as cleanly unmounted."""
@@ -207,10 +200,10 @@ class PyFat(object):
             self.fat[1] |= clean_shutdown_bitmask
             self.flush_fat()
 
-        self.fat_header["BS_Reserved1"] = (self.fat_header["BS_Reserved1"]
+        self.bpb_header["BS_Reserved1"] = (self.bpb_header["BS_Reserved1"]
                                            & ~self.FAT_DIRTY_BIT_MASK) | \
                                           (0 & self.FAT_DIRTY_BIT_MASK)
-        self._write_fat_header()
+        self._write_bpb_header()
 
     def open(self, filename: str, read_only: bool = False):
         """Open filesystem for usage with PyFat.
@@ -267,7 +260,7 @@ class PyFat(object):
             return self.bpb_header["BPB_FATSz16"]
 
         try:
-            return self._parse_fat_header(force_fat32=True)["BPB_FATSz32"]
+            return self.bpb_header["BPB_FATSz32"]
         except KeyError:
             raise PyFATException("Invalid FAT size of 0 detected in header, "
                                  "cannot continue")
@@ -283,7 +276,7 @@ class PyFat(object):
         first_fat_bytes = self.bpb_header["BPB_RsvdSecCnt"]
         first_fat_bytes *= self.bpb_header["BPB_BytsPerSec"]
         fats = []
-        for i in range(self.bpb_header["BPB_NumFATS"]):
+        for i in range(self.bpb_header["BPB_NumFATs"]):
             with self.__lock:
                 self.__seek(first_fat_bytes + (i * fat_size))
                 fats += [self.__fp.read(fat_size)]
@@ -481,7 +474,7 @@ class PyFat(object):
 
         with self.__lock:
             binary_fat = bytes(self)
-            for i in range(self.bpb_header["BPB_NumFATS"]):
+            for i in range(self.bpb_header["BPB_NumFATs"]):
                 self.__seek(first_fat_bytes + (i * fat_size))
                 self.__fp.write(binary_fat)
 
@@ -550,7 +543,8 @@ class PyFat(object):
 
             if erase is True:
                 with self.__lock:
-                    self.__seek(self.get_data_cluster_address(i))
+                    self.__seek(self.get_data_cluster_address(
+                        free_clusters[i]))
                     self.__fp.write(b'\0' * self.bytes_per_cluster)
 
         return free_clusters
@@ -629,7 +623,7 @@ class PyFat(object):
         FAT32 actually has its root directory entries distributed
         across a cluster chain that we need to follow
         """
-        root_cluster = self.fat_header["BPB_RootClus"]
+        root_cluster = self.bpb_header["BPB_RootClus"]
         self.root_dir.set_cluster(root_cluster)
 
         # Follow root directory cluster chain
@@ -824,7 +818,7 @@ class PyFat(object):
             self._mark_clean()
 
         self.__fp.close()
-        self.initialised = False
+        self.initialized = False
 
     def __del__(self):
         """Try to close open handles."""
@@ -850,7 +844,7 @@ class PyFat(object):
             total_sectors = self.bpb_header["BPB_TotSec32"]
 
         rsvd_sectors = self.bpb_header["BPB_RsvdSecCnt"]
-        fat_sz = self.bpb_header["BPB_NumFATS"] * self._fat_size
+        fat_sz = self.bpb_header["BPB_NumFATs"] * self._fat_size
         root_dir_sectors = self.root_dir_sectors
         data_sec = total_sectors - (rsvd_sectors + fat_sz + root_dir_sectors)
         count_of_clusters = data_sec // self.bpb_header["BPB_SecPerClus"]
@@ -863,8 +857,7 @@ class PyFat(object):
             msft_fat_type = self.FAT_TYPE_FAT32
 
         if self.bpb_header["BPB_FATSz16"] == 0:
-            fat_hdr = self._parse_fat_header(force_fat32=True)
-            if fat_hdr["BPB_FATSz32"] != 0:
+            if self.bpb_header["BPB_FATSz32"] != 0:
                 linux_fat_type = self.FAT_TYPE_FAT32
             else:
                 linux_fat_type = msft_fat_type
@@ -881,36 +874,21 @@ class PyFat(object):
         return linux_fat_type
 
     @_readonly_check
-    def _write_fat_header(self):
-        with self.__lock:
-            self.__seek(36)
-            self.__fp.write(bytes(self.fat_header))
-
-    def _parse_fat_header(self, force_fat32: bool = False) -> FATHeader:
-        """Parse FAT header."""
+    def _write_bpb_header(self):
         with self.__lock:
             self.__seek(0)
-            boot_sector = self.__fp.read(512)
+            self.__fp.write(bytes(self.bpb_header))
+            self.__seek(510)
+            self.__fp.write(b'\x55\xAA')
 
-        if self.fat_type in [self.FAT_TYPE_FAT12, self.FAT_TYPE_FAT16] \
-                and not force_fat32:
-            fat_header = FAT12Header()
-            fat_header.parse_header(boot_sector[36:][:26])
-            return fat_header
-        elif self.fat_type == self.FAT_TYPE_FAT32 or force_fat32:
-            # FAT32, probably - probe for it
-            if self.bpb_header["BPB_FATSz16"] != 0:
-                raise PyFATException(f"Invalid BPB_FATSz16 value of "
-                                     f"'{self.bpb_header['BPB_FATSz16']}', "
-                                     f"filesystem corrupt?",
-                                     errno=errno.EINVAL)
-
-            fat_header = FAT32Header()
-            fat_header.parse_header(boot_sector[36:][:54])
-            return fat_header
-
-        raise PyFATException("Unknown FAT filesystem type, "
-                             "filesystem corrupt?", errno=errno.EINVAL)
+            if self.fat_type == PyFat.FAT_TYPE_FAT32:
+                # write backup
+                backup_offset = self.bpb_header["BPB_BkBootSec"] * \
+                                self.bpb_header["BPB_BytsPerSec"]
+                self.__seek(backup_offset)
+                self.__fp.write(bytes(self.bpb_header))
+                self.__seek(510 + backup_offset)
+                self.__fp.write(b'\x55\xAA')
 
     def parse_header(self):
         """Parse BPB & FAT headers in opened file."""
@@ -918,25 +896,27 @@ class PyFat(object):
             self.__seek(0)
             boot_sector = self.__fp.read(512)
 
-        header = struct.unpack(self.bpb_header_layout, boot_sector[:36])
-        self.bpb_header = dict(zip(self.bpb_header_vars, header))
+        self.bpb_header = BootSectorHeader()
+        self.bpb_header.parse_header(boot_sector[:36])
 
         # Verify BPB headers
         self.__verify_bpb_header()
 
+        # Parse FAT type specific header
+        self.bpb_header = FAT12BootSectorHeader() \
+            if self.bpb_header["BPB_FATSz16"] > 0 else FAT32BootSectorHeader()
+        self.bpb_header.parse_header(boot_sector)
+
         # Determine FAT type
         self._fat_size = self._get_fat_size_count()
         self.fat_type = self.__determine_fat_type()
-
-        # Parse FAT type specific header
-        self.fat_header = self._parse_fat_header()
 
         # Calculate root directory sectors and starting point of root directory
         root_entries = self.bpb_header["BPB_RootEntCnt"]
         hdr_size = FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE
         bytes_per_sec = self.bpb_header["BPB_BytsPerSec"]
         rsvd_secs = self.bpb_header["BPB_RsvdSecCnt"]
-        num_fats = self.bpb_header["BPB_NumFATS"]
+        num_fats = self.bpb_header["BPB_NumFATs"]
 
         self.root_dir_sectors = ((root_entries * hdr_size) +
                                  (bytes_per_sec - 1)) // bytes_per_sec
@@ -954,8 +934,8 @@ class PyFat(object):
         if signature != 0xAA55:
             raise PyFATException(f"Invalid signature: \'{hex(signature)}\'.")
 
-        # Initialisation finished
-        self.initialised = True
+        # Initialization finished
+        self.initialized = True
 
     def __verify_bpb_header(self):
         """Verify BPB header for correctness."""
@@ -996,7 +976,7 @@ class PyFat(object):
                                                 0xfc, 0xfd, 0xfe, 0xff]:
             raise PyFATException("Invalid media type")
 
-        if self.bpb_header["BPB_NumFATS"] < 1:
+        if self.bpb_header["BPB_NumFATs"] < 1:
             raise PyFATException("At least one FAT expected, None found.")
 
         root_entry_count = self.bpb_header["BPB_RootEntCnt"] * 32
@@ -1010,6 +990,13 @@ class PyFat(object):
             raise PyFATException("16-Bit and 32-Bit total sector count "
                                  "value empty.")
 
+        if ((self.bpb_header["BPB_RootEntCnt"] * 32) //
+                self.bpb_header["BPB_BytsPerSec"]) % 2 != 0:
+            raise PyFATException("Root entry count value should always "
+                                 "specify a count that when multiplied "
+                                 "by 32 results in an even multiple of "
+                                 "bytes per sector.")
+
     @staticmethod
     @contextmanager
     def open_fs(filename: str, offset: int = 0,
@@ -1019,3 +1006,222 @@ class PyFat(object):
         pf.open(filename)
         yield pf
         pf.close()
+
+    def mkfs(self, filename: str,
+             fat_type: Union["PyFat.FAT_TYPE_FAT12",
+                             "PyFat.FAT_TYPE_FAT16",
+                             "PyFat.FAT_TYPE_FAT32"],
+             size: int = None,
+             sector_size: int = 512,
+             number_of_fats: int = 2,
+             label: str = "NO NAME",
+             volume_id: int = None,
+             media_type: int = 0xF8):
+        """Create a new FAT filesystem.
+
+        :param filename: `str`: Name of file to create filesystem in
+        :param fat_type: `FAT_TYPE_FAT{12,16,32}`: FAT type
+        :param size: `int`: Size of new filesystem in bytes
+        :param sector_size: `int`: Size of a sector in bytes
+        :param number_of_fats: `int`: Number of FATs on the disk
+        :param label: `str`: Volume label
+        :param volume_id: `bytes`: Volume id (4 bytes)
+        :param media_type: `int`: Media type (0xF{0,8-F})
+        """
+        self.initialized = True
+        self.is_read_only = False
+        self.fat_type = fat_type
+        self.__set_fp(open(filename, mode='rb+'))
+
+        if size is None:
+            size = self.__fp_offset - self.__fp.seek(-1)
+
+        try:
+            self.__fp.truncate(size)
+        except IOError:
+            raise PyFATException("Failed to truncate file to given size. "
+                                 "Most likely the file can't be extended.",
+                                 errno=errno.EFBIG)
+
+        if sector_size < 512:
+            raise PyFATException("Sector size cannot be less than 512.")
+        elif sector_size % 2 != 0:
+            raise PyFATException("Sector size must be a power of two.")
+
+        if not volume_id:
+            # generate random but valid volume id
+            tm = time.localtime()
+            cdate = ((tm[0]-1980) << 9) | (tm[1] << 5) | (tm[2])
+            ctime = (tm[3] << 11) | (tm[4] << 5) | (tm[5]//2)
+            volume_id = cdate << 16 | ctime
+
+        num_sec = math.ceil(size / sector_size)
+        num_sec_to_sec_per_clus = {
+            PyFat.FAT_TYPE_FAT32: [
+               (66600, 0),      # disks up to  32.5 MB, error
+               (532480, 1),     # disks up to 260   MB,  .5k cluster
+               (16777216, 8),   # disks up to   8   GB,  4 k cluster
+               (33554432, 16),  # disks up to  16   GB,  8 k cluster
+               (67108864, 32)   # disks up to  32   GB, 16 k cluster
+            ],
+            PyFat.FAT_TYPE_FAT16: [
+                (8400, 0),      # disks up to   4.1 MB, error
+                (32680, 2),     # disks up to  16   MB,  1k cluster
+                (262144, 4),    # disks up to 128   MB,  2k cluster
+                (524288, 8),    # disks up to 256   MB,  4k cluster
+                (1048576, 16),  # disks up to 512   MB,  8k cluster
+                (2097152, 32),  # disks up to   1   GB, 16k cluster
+                (4194304, 64)   # disks up to   2   GB, 32k cluster
+            ],
+            PyFat.FAT_TYPE_FAT12: [
+                (32768, 64)
+            ]
+        }
+        sec_per_clus = 0
+        for sec, spc in num_sec_to_sec_per_clus[fat_type]:
+            if num_sec <= sec:
+                sec_per_clus = spc
+                break
+
+        boot_code = b"\x0e"           # push cs
+        boot_code += b"\x1f"          # pop ds
+        boot_code += b"\xbe\x5b\x7c"  # mov si, offset message_txt
+        # write_msg:
+        boot_code += b"\xac"          # lodsb
+        boot_code += b"\x22\xc0"      # and al, al
+        boot_code += b"\x74\x0b"      # jz key_press
+        boot_code += b"\x56"          # push si
+        boot_code += b"\xb4\x0e"      # mov ah, 0eh
+        boot_code += b"\xbb\x07\x00"  # mov bx, 0007h
+        boot_code += b"\xcd\x10"      # int 10h
+        boot_code += b"\x5e"          # pop si
+        boot_code += b"\xeb\xf0"      # jmp write_msg
+        # key_press:
+        boot_code += b"\x32\xe4"      # xor ah, ah
+        boot_code += b"\xcd\x16"      # int 16h
+        boot_code += b"\xcd\x19"      # int 19h
+        boot_code += b"\xeb\xfe"      # foo: jmp foo
+        # message_txt:
+        boot_code += \
+            b"This is not a bootable disk. " \
+            b"Please insert a bootable floppy and " \
+            b"press any key to try again ...\n"
+
+        if fat_type == PyFat.FAT_TYPE_FAT32:
+            root_ent_cnt = 0
+        elif fat_type == PyFat.FAT_TYPE_FAT16:
+            root_ent_cnt = 512
+        else:
+            root_ent_cnt = 224  # randomly picked, fine if sector_size is 512
+
+        rsvd_sec_cnt = 32 if fat_type == PyFat.FAT_TYPE_FAT32 else 1
+
+        # fat size calculation taken from fatgen103.doc
+        root_dir_sectors = \
+            ((root_ent_cnt * 32) + (sector_size - 1)) // sector_size
+        tmp_val1 = size - (rsvd_sec_cnt + root_dir_sectors)
+        tmp_val2 = (256 * sec_per_clus) + number_of_fats
+        if fat_type == PyFat.FAT_TYPE_FAT32:
+            tmp_val2 = tmp_val2 // 2
+        self._fat_size = \
+            math.ceil((tmp_val1 + tmp_val2 - 1) // tmp_val2 / sector_size)
+        if fat_type == PyFat.FAT_TYPE_FAT32:
+            fat_size_16 = 0
+            fat_size_32 = self._fat_size
+        else:
+            fat_size_16 = self._fat_size % 0x10000
+            # there is no BPB_FATSz32 in a FAT16 BPB
+
+        if fat_type == PyFat.FAT_TYPE_FAT32 or num_sec >= 0x10000:
+            total_sectors_16 = 0
+            total_sectors_32 = num_sec
+        else:
+            total_sectors_16 = num_sec
+            total_sectors_32 = 0
+
+        self.bpb_header = FAT32BootSectorHeader() \
+            if fat_type == PyFat.FAT_TYPE_FAT32 \
+            else FAT12BootSectorHeader()
+
+        self.bytes_per_cluster = sec_per_clus * sector_size
+        self.first_data_sector = \
+            rsvd_sec_cnt + number_of_fats * self._fat_size
+
+        self.bpb_header.update({
+            "BS_jmpBoot":
+                bytearray([0xEB, len(self.bpb_header) - 2, 0x90]),
+            "BS_OEMName": b"MSWIN4.1",
+            "BPB_BytsPerSec": sector_size,
+            "BPB_SecPerClus": sec_per_clus,
+            "BPB_RsvdSecCnt": rsvd_sec_cnt,
+            "BPB_NumFATs": number_of_fats,
+            "BPB_RootEntCnt": root_ent_cnt,
+            "BPB_TotSec16": total_sectors_16,
+            "BPB_Media": media_type,
+            "BPB_FATSz16": fat_size_16,
+            "BPB_SecPerTrk": 0,
+            "BPB_NumHeads": 0,
+            "BPB_HiddSec": 0,
+            "BPB_TotSec32": total_sectors_32,
+            "BS_VolID": volume_id,
+            "BS_VolLab": label[:11].ljust(11).encode('ascii'),
+            "BS_DrvNum": 0x80 if media_type == 0xF8 else 0,
+            "BS_Reserved1": 0,
+            "BS_BootSig": 0x29,
+            "BS_FilSysType": PyFat.FS_TYPES[fat_type],
+        })
+
+        if fat_type == PyFat.FAT_TYPE_FAT32:
+            self.bpb_header.update({
+                "BPB_FATSz32": fat_size_32,
+                "BPB_ExtFlags": 0,
+                "BPB_FSVer": 0,
+                "BPB_RootClus": 2,
+                "BPB_FSInfo": 1,
+                "BPB_BkBootSec": 6,
+                "BPB_Reserved": b'\x00' * 12,
+            })
+
+        self.__verify_bpb_header()
+
+        # write fat sector
+        self.fat = [0] * (self._fat_size * sector_size)
+        if fat_type == PyFat.FAT_TYPE_FAT12:
+            self.fat[0] = 0x0FF0 | (self.bpb_header["BPB_Media"] % 0xF)
+            self.fat[1] = PyFat.FAT12_SPECIAL_EOC
+        elif fat_type == PyFat.FAT_TYPE_FAT16:
+            self.fat[0] = 0xFFF0 | (self.bpb_header["BPB_Media"] % 0xF)
+            self.fat[1] = 0xFFFF
+        elif fat_type == PyFat.FAT_TYPE_FAT32:
+            self.fat[0] = 0x0FFFFFF0 | (self.bpb_header["BPB_Media"] % 0xF)
+            self.fat[1] = 0x0FFFFFFF
+        self.flush_fat()
+
+        self.__seek(len(self.bpb_header))
+        self.__fp.write(boot_code)
+        # ensure boot loader code is not too big
+        if self.__fp.tell() > 510:
+            raise PyFATException("Boot code to large.")
+
+        if fat_type == PyFat.FAT_TYPE_FAT32:
+            free_count = (total_sectors_32 - rsvd_sec_cnt -
+                          number_of_fats * self._fat_size) // sec_per_clus - 1
+            fsinfo = FSInfo(free_count=free_count, next_free=2)
+            self.__seek(512)
+            self.__fp.write(bytes(fsinfo))
+
+            first_cluster = self.allocate_bytes(
+                FATDirectoryEntry.FAT_DIRECTORY_HEADER_SIZE,
+                erase=True)[0]
+            self.bpb_header["BPB_RootClus"] = first_cluster
+
+            # write backup
+            backup_offset = self.bpb_header["BPB_BkBootSec"] * \
+                self.bpb_header["BPB_BytsPerSec"]
+            self.__seek(len(self.bpb_header) + backup_offset)
+            self.__fp.write(boot_code)
+
+            self.__seek(512 + backup_offset)
+            self.__fp.write(bytes(fsinfo))
+
+        self._write_bpb_header()
