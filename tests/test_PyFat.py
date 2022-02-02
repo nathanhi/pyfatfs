@@ -1,9 +1,31 @@
 # -*- coding: utf-8 -*-
 
 """Test PyFat core functionality."""
+from io import BytesIO
 from unittest import mock
 
+from pyfatfs.FATDirectoryEntry import FATDirectoryEntry
 from pyfatfs.PyFat import PyFat
+
+
+def test_set_fp_bytesio():
+    """Test that BytesIO can be set via PyFat.set_fp."""
+    pf = PyFat(encoding='UTF-8')
+    in_memory_fs = BytesIO(b'\0' * 4 * 1024 * 1024)
+    pf._PyFat__fp = in_memory_fs
+    with mock.patch('pyfatfs.PyFat.PyFat._PyFat__set_fp',
+                    mock.Mock()):
+        with mock.patch('pyfatfs.PyFat.open'):
+            pf.mkfs("/this/does/not/exist.img",
+                    fat_type=PyFat.FAT_TYPE_FAT12,
+                    label="FOOBARBAZ",
+                    size=1024 * 1024 * 4)
+
+    pf2 = PyFat()
+    in_memory_fs.seek(0)
+    pf2.set_fp(BytesIO(in_memory_fs.read()))
+    assert isinstance(pf2.root_dir, FATDirectoryEntry)
+    assert pf2.bpb_header["BS_VolLab"] == b'FOOBARBAZ  '
 
 
 def test_is_dirty_fat12_not_dirty():

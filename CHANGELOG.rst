@@ -12,10 +12,11 @@ Unreleased_
 Added
 ~~~~~
 
-* static ``new`` method for ``FATDirectoryEntry``
-* ``mkfs`` method
-* ``FATHeader`` class replaced by ``BootSectorHeader``
-* initial support of ``FSInfo`` for ``mkfs``
+* Static ``new`` method for ``FATDirectoryEntry``
+* `PR #17 <https://github.com/nathanhi/pyfatfs/pull/17>`_: ``mkfs`` method by `@wackinger <https://github.com/wackinger>`_ / `@Draegerwerk <https://github.com/Draegerwerk>`_
+   * ``FATHeader`` class replaced by ``BootSectorHeader``
+   * Initial support of ``FSInfo`` for ``mkfs``
+* `PR #16 <https://github.com/nathanhi/pyfatfs/issues/16>`_ Expose ``PyFat.set_fp`` function to allow using BytesIO / in-memory files
 
 Fixed
 ~~~~~

@@ -13,7 +13,8 @@ import time
 import warnings
 
 from contextlib import contextmanager
-from io import BufferedReader, FileIO, open
+from io import BufferedReader, FileIO, open, BytesIO, IOBase
+from os import PathLike
 from typing import Union
 
 from pyfatfs import FAT_OEM_ENCODING, _init_check
@@ -122,7 +123,7 @@ class PyFat(object):
         self.is_read_only = True
         self.__lock = threading.Lock()
 
-    def __set_fp(self, fp):
+    def __set_fp(self, fp: Union[IOBase, BytesIO]):
         if isinstance(self.__fp, BufferedReader):
             raise PyFATException("Cannot overwrite existing file handle, "
                                  "create new class instance of PyFAT.")
@@ -205,23 +206,24 @@ class PyFat(object):
                                           (0 & self.FAT_DIRTY_BIT_MASK)
         self._write_bpb_header()
 
-    def open(self, filename: str, read_only: bool = False):
-        """Open filesystem for usage with PyFat.
+    def set_fp(self, fp: Union[BytesIO, IOBase]):
+        """Open a filesystem from a valid file pointer.
 
-        :param filename: `str`: Name of file to open for usage with PyFat.
-        :param read_only: `bool`: Force read-only mode of filesystem.
+        This allows using in-memory filesystems (e.g., BytesIO).
+
+        :param fp: `FileIO`: Valid `FileIO` object
         """
-        self.is_read_only = read_only
-        if read_only is True:
-            mode = 'rb'
-        else:
-            mode = 'rb+'
+        if not fp.readable():
+            raise PyFATException("Cannot read data from file pointer.",
+                                 errno=errno.EACCES)
 
-        try:
-            self.__set_fp(open(filename, mode=mode))
-        except OSError as ex:
-            raise PyFATException(f"Cannot open given file \'{filename}\'.",
-                                 errno=ex.errno)
+        if not fp.seekable():
+            raise PyFATException("Cannot seek file object.",
+                                 errno=errno.EINVAL)
+
+        self.is_read_only = not fp.writable()
+
+        self.__set_fp(fp)
 
         # Parse BPB & FAT headers of given file
         self.parse_header()
@@ -240,6 +242,24 @@ class PyFat(object):
         # TODO: Inefficient to always recursively parse the root dir.
         #       It would make sense to parse it on demand instead.
         self.parse_root_dir()
+
+    def open(self, filename: Union[str, PathLike], read_only: bool = False):
+        """Open filesystem for usage with PyFat.
+
+        :param filename: `str`: Name of file to open for usage with PyFat.
+        :param read_only: `bool`: Force read-only mode of filesystem.
+        """
+        self.is_read_only = read_only
+        if read_only is True:
+            mode = 'rb'
+        else:
+            mode = 'rb+'
+
+        try:
+            return self.set_fp(open(filename, mode=mode))
+        except OSError as ex:
+            raise PyFATException(f"Cannot open given file \'{filename}\'.",
+                                 errno=ex.errno)
 
     @_init_check
     def get_fs_location(self):
