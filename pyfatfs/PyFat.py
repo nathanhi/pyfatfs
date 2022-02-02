@@ -1030,6 +1030,11 @@ class PyFat(object):
         """
         self.initialized = True
         self.is_read_only = False
+
+        if fat_type not in [PyFat.FAT_TYPE_FAT12, PyFat.FAT_TYPE_FAT16,
+                            PyFat.FAT_TYPE_FAT32]:
+            raise PyFATException("Unsupported FAT type given.")
+
         self.fat_type = fat_type
         self.__set_fp(open(filename, mode='rb+'))
 
