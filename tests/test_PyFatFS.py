@@ -18,7 +18,6 @@ class KeepOpenBytesIO(BytesIO):
 
     def close(self):
         """Just do nothing on close."""
-        pass
 
 
 class TestPyFatFS16(FSTestCases, TestCase):
