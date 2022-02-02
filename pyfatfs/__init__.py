@@ -25,12 +25,12 @@ FAT_LFN_ENCODING = 'utf-16-le'
 
 def _init_check(func):
     def _wrapper(*args, **kwargs):
-        initialised = args[0].initialised
+        initialized = args[0].initialized
 
-        if initialised is True:
+        if initialized is True:
             return func(*args, **kwargs)
         else:
-            raise PyFATException("Class has not yet been fully initialised, "
+            raise PyFATException("Class has not yet been fully initialized, "
                                  "please instantiate first.")
 
     return _wrapper

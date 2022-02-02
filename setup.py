@@ -17,6 +17,7 @@ except ImportError:
 
 
 def load_requirements(fname):
+    """Load requirements from given file."""
     reqs = parse_requirements(fname, session="test")
     return [getattr(r, 'requirement',
             str(getattr(r, 'req', None))) for r in reqs]
@@ -44,10 +45,12 @@ setup(name=_get_attribute('__name__'),
       author_email=_get_attribute('__author_email__'),
       license=_get_attribute('__license__'),
       url='https://github.com/nathanhi/pyfatfs',
-      project_urls={'Documentation': f'https://pyfatfs.readthedocs.io',
-                    'Changelog': 'https://github.com/nathanhi/pyfatfs/blob/master/CHANGELOG.rst',
-                    'Issues': 'https://github.com/nathanhi/pyfatfs/issues',
-                    'Source': 'https://github.com/nathanhi/pyfatfs',
+      project_urls={
+          'Documentation': 'https://pyfatfs.readthedocs.io',
+          'Changelog': 'https://github.com/nathanhi/pyfatfs/blob/'
+                       'master/CHANGELOG.rst',
+          'Issues': 'https://github.com/nathanhi/pyfatfs/issues',
+          'Source': 'https://github.com/nathanhi/pyfatfs',
       },
       packages=find_packages(),
       keywords=['filesystem', 'PyFilesystem2', 'FAT12',

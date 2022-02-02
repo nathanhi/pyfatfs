@@ -13,6 +13,9 @@ Added
 ~~~~~
 
 * static ``new`` method for ``FATDirectoryEntry``
+* ``mkfs`` method
+* ``FATHeader`` class replaced by ``BootSectorHeader``
+* initial support of ``FSInfo`` for ``mkfs``
 
 Fixed
 ~~~~~

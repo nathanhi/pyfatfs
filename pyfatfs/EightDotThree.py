@@ -29,7 +29,7 @@ class EightDotThree:
         """
         self.name: bytearray = None
         self.encoding = encoding
-        self.initialised = False
+        self.initialized = False
 
     def __str__(self):
         """Decode and un-pad SFN string."""
@@ -66,7 +66,7 @@ class EightDotThree:
             self.__raise_8dot3_nonconformant(name.decode(self.encoding))
 
         self.name = name
-        self.initialised = True
+        self.initialized = True
 
     def set_byte_name(self, name: bytes):
         """Set the name as byte input from a directory entry header.
@@ -103,7 +103,7 @@ class EightDotThree:
         if name[0] == 0xE5:
             name[0] = 0x05
         self.name = name
-        self.initialised = True
+        self.initialized = True
 
     @_init_check
     def checksum(self) -> int:

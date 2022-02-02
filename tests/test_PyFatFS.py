@@ -2,12 +2,9 @@
 
 """Tests from PyFilesystem2."""
 
-import gzip
-import os
 from datetime import datetime
-from functools import lru_cache
-from io import BytesIO
 from unittest import TestCase, mock
+from io import BytesIO
 
 import fs.errors
 from fs.test import FSTestCases
@@ -16,25 +13,34 @@ from pyfatfs.PyFat import PyFat
 from pyfatfs.PyFatFS import PyFatFS
 
 
+class KeepOpenBytesIO(BytesIO):
+    """Don't close BytesIO."""
+
+    def close(self):
+        """Just do nothing on close."""
+        pass
+
+
 class TestPyFatFS16(FSTestCases, TestCase):
     """Integration tests with PyFilesystem2 for FAT16."""
 
-    FS_IMG_FILE = "pyfat16.img.gz"
-
-    @staticmethod
-    @lru_cache()
-    def __read_fsimg(img_file):
-        with gzip.open(img_file, "r") as imggz:
-            return imggz.read()
+    FAT_TYPE = PyFat.FAT_TYPE_FAT16
 
     def make_fs(self):  # pylint: disable=R0201
         """Create filesystem for pyfilesystem2 integration tests."""
-        img_file = os.path.join(os.path.dirname(__file__),
-                                "data", self.FS_IMG_FILE)
-        with mock.patch('pyfatfs.PyFat.open') as mock_open:
-            mock_open.return_value = BytesIO(self.__read_fsimg(img_file))
-            return PyFatFS("/this/does/not/exist.img",
-                           encoding='UTF-8')
+        open_mock = mock.Mock(return_value=KeepOpenBytesIO())
+        with mock.patch('pyfatfs.PyFat.open',
+                        open_mock,
+                        create=True):
+            image = "/this/does/not/exist.img"
+            pf = PyFat(encoding='UTF-8')
+            pf.mkfs(image,
+                    fat_type=self.FAT_TYPE,
+                    size=1024*1024*(4 if self.FAT_TYPE == PyFat.FAT_TYPE_FAT12
+                                    else 33))
+            pf.close()
+            pfs = PyFatFS(image, encoding='UTF-8')
+        return pfs
 
     def test_create_file_folder_dupe(self):
         """Verify that file creation with duplicate name to a folder fails."""
@@ -62,25 +68,25 @@ class TestPyFatFS16(FSTestCases, TestCase):
 class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase):
     """Integration tests with PyFilesystem2 for FAT32."""
 
-    FS_IMG_FILE = "pyfat32.img.gz"
+    FAT_TYPE = PyFat.FAT_TYPE_FAT32
 
 
 class TestPyFatFS12(TestPyFatFS16, FSTestCases, TestCase):
     """Test specifics of FAT12 filesystem."""
 
-    FS_IMG_FILE = "pyfat12.img.gz"
+    FAT_TYPE = PyFat.FAT_TYPE_FAT12
 
     @mock.patch('pyfatfs.PyFat.PyFat.close')
     def test_fat_serialize(self, mock_close):
         """Make sure the FAT is properly serialized in case of FAT12."""
         pf = PyFat()
-        pf.initialised = True
+        pf.initialized = True
         pf.fat_type = pf.FAT_TYPE_FAT12
         pf.bpb_header = {
             'BPB_BytsPerSec': 512,
             'BPB_SecPerClus': 4,
             'BPB_RsvdSecCnt': 1,
-            'BPB_NumFATS': 1,
+            'BPB_NumFATs': 1,
             'BPB_FATSz16': 1
         }
         pf._fat_size = pf._get_fat_size_count()
