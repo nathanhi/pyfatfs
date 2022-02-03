@@ -1010,13 +1010,6 @@ class PyFat(object):
             raise PyFATException("16-Bit and 32-Bit total sector count "
                                  "value empty.")
 
-        if ((self.bpb_header["BPB_RootEntCnt"] * 32) //
-                self.bpb_header["BPB_BytsPerSec"]) % 2 != 0:
-            raise PyFATException("Root entry count value should always "
-                                 "specify a count that when multiplied "
-                                 "by 32 results in an even multiple of "
-                                 "bytes per sector.")
-
     @staticmethod
     @contextmanager
     def open_fs(filename: str, offset: int = 0,
