@@ -10,14 +10,7 @@ import fs.errors
 from fs.test import FSTestCases
 
 from pyfatfs.PyFat import PyFat
-from pyfatfs.PyFatFS import PyFatFS
-
-
-class KeepOpenBytesIO(BytesIO):
-    """Don't close BytesIO."""
-
-    def close(self):
-        """Just do nothing on close."""
+from pyfatfs.PyFatFS import PyFatBytesIOFS
 
 
 class TestPyFatFS16(FSTestCases, TestCase):
@@ -26,20 +19,23 @@ class TestPyFatFS16(FSTestCases, TestCase):
     FAT_TYPE = PyFat.FAT_TYPE_FAT16
 
     def make_fs(self):  # pylint: disable=R0201
-        """Create filesystem for pyfilesystem2 integration tests."""
-        open_mock = mock.Mock(return_value=KeepOpenBytesIO())
-        with mock.patch('pyfatfs.PyFat.open',
-                        open_mock,
-                        create=True):
-            image = "/this/does/not/exist.img"
-            pf = PyFat(encoding='UTF-8')
-            pf.mkfs(image,
-                    fat_type=self.FAT_TYPE,
-                    size=1024*1024*(4 if self.FAT_TYPE == PyFat.FAT_TYPE_FAT12
-                                    else 33))
-            pf.close()
-            pfs = PyFatFS(image, encoding='UTF-8')
-        return pfs
+        """Create filesystem for PyFilesystem2 integration tests."""
+        pf = PyFat()
+        part_sz = 1024 * 1024 * (4 if self.FAT_TYPE == PyFat.FAT_TYPE_FAT12
+                                 else 33)
+        in_memory_fs = BytesIO(b'\0' * part_sz)
+        pf._PyFat__fp = in_memory_fs
+        with mock.patch('pyfatfs.PyFat.PyFat._PyFat__set_fp',
+                        mock.Mock()):
+            with mock.patch('pyfatfs.PyFat.open'):
+                pf.mkfs("/this/does/not/exist.img",
+                        fat_type=self.FAT_TYPE,
+                        label=f"FAT{self.FAT_TYPE}TST",
+                        size=part_sz)
+                pf.flush_fat()
+
+        in_memory_fs.seek(0)
+        return PyFatBytesIOFS(BytesIO(in_memory_fs.read()), encoding='UTF-8')
 
     def test_create_file_folder_dupe(self):
         """Verify that file creation with duplicate name to a folder fails."""

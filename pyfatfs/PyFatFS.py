@@ -5,6 +5,8 @@ import datetime
 import posixpath
 import errno
 from copy import copy
+from io import BytesIO, IOBase
+from typing import Union
 
 from fs.base import FS
 from fs.mode import Mode
@@ -481,3 +483,37 @@ class PyFatFS(FS):
             dentry.lstaccessdate = atime.serialize_date()
 
         self.fs.update_directory_entry(dentry.get_parent_dir())
+
+
+class PyFatBytesIOFS(PyFatFS):
+    """Provide PyFatFS functionality for BytesIO or IOBase streams."""
+
+    def __init__(self, fp: Union[IOBase, BytesIO],
+                 encoding: str = FAT_OEM_ENCODING,
+                 offset: int = 0, preserve_case: bool = True,
+                 utc: bool = False):
+        """PyFilesystem2 FAT constructor, initializes self.fs with BytesIO.
+
+        :param fp: `BytesIO` / `IOBase`: Open file, either in-memory
+                   or already open handle.
+        :param encoding: `str`: Valid Python standard encoding.
+        :param offset: `int`: Offset from file start to filesystem
+                       start in bytes.
+        :param preserve_case: `bool`: By default 8DOT3 filenames do not
+                              support casing. If preserve_case is set to
+                              `True`, it will create an LFN entry if the
+                              casing does not conform to 8DOT3.
+        :param utc: `bool`: Store timestamps in UTC rather than the local time.
+                    This applies to dentry creation, modification and last
+                    access time.
+        """
+        super(PyFatFS, self).__init__()
+        self.preserve_case = preserve_case
+        self.fs = PyFat(encoding=encoding, offset=int(offset))
+        self.fs.set_fp(fp)
+
+        if utc:
+            self.tz = datetime.timezone.utc
+        else:
+            self.tz = datetime.datetime.now(datetime.timezone.utc)
+            self.tz = self.tz.astimezone().tzinfo
