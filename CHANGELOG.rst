@@ -9,6 +9,9 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+1.0.0_ - 2022-02-03
+-------------------
+
 Added
 ~~~~~
 
@@ -16,7 +19,7 @@ Added
 * `PR #17 <https://github.com/nathanhi/pyfatfs/pull/17>`_: ``mkfs`` method by `@wackinger <https://github.com/wackinger>`_ / `@Draegerwerk <https://github.com/Draegerwerk>`_
    * ``FATHeader`` class replaced by ``BootSectorHeader``
    * Initial support of ``FSInfo`` for ``mkfs``
-* `PR #16 <https://github.com/nathanhi/pyfatfs/issues/16>`_ Expose ``PyFat.set_fp`` function to allow using BytesIO / in-memory files
+* Expose ``PyFat.set_fp`` function to allow using BytesIO / in-memory files. Provide ``PyFatBytesIOFS`` class for PyFilesystem2
 
 Fixed
 ~~~~~
@@ -125,7 +128,8 @@ Fixed
 * `PR #2 <https://github.com/nathanhi/pyfatfs/pull/2>`_: Fix DOS time conversion by `@koolkdev <https://github.com/koolkdev>`_
 * `PR #3 <https://github.com/nathanhi/pyfatfs/pull/3>`_: Fix reading from a file and implement arbitrary write by `@koolkdev <https://github.com/koolkdev>`_
 
-.. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v0.2.0...HEAD
+.. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v1.0.0...HEAD
+.. _1.0.0: https://github.com/nathanhi/pyfatfs/compare/v0.3.1...v1.0.0
 .. _0.3.1: https://github.com/nathanhi/pyfatfs/compare/v0.3.0...v0.3.1
 .. _0.3.0: https://github.com/nathanhi/pyfatfs/compare/v0.2.0...v0.3.0
 .. _0.2.0: https://github.com/nathanhi/pyfatfs/compare/v0.1.2...v0.2.0

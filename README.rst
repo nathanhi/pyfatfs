@@ -1,6 +1,3 @@
-pyfatfs
-=======
-
 .. image:: https://img.shields.io/github/workflow/status/nathanhi/pyfatfs/test?style=flat-square
     :target: https://github.com/nathanhi/pyfatfs/actions/workflows/test.yml
     :alt: CI build status
@@ -23,18 +20,15 @@ pyfatfs
     :target: https://github.com/nathanhi/pyfatfs/blob/HEAD/LICENSE
     :alt: MIT License
 
+pyfatfs
+=======
+
 pyfatfs is a filesystem module for use with `PyFilesystem2 <https://pypi.org/project/fs/>`_
 for anyone who needs to access or modify files on a FAT filesystem. It also
 provides a low-level API that allows direct interaction with a FAT filesystem
 without PyFilesystem2 abstraction.
 
 pyfatfs supports FAT12/FAT16/FAT32 as well as the VFAT extension (long file names).
-
-It currently is in an early development state and expected to be unstable and
-contain bugs. On FAT32 filesystems the FSInfo struct, containing the free cluster
-information used to quickly calculate the free space and easily access information
-such as the next free cluster in the FAT, is not yet supported, so it will be
-reported by fsck operations after writes.
 
 Installation
 ------------
