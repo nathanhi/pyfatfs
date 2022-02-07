@@ -1055,7 +1055,7 @@ class PyFat(object):
             size = self.__fp_offset - self.__fp.seek(-1)
 
         try:
-            self.__fp.truncate(size)
+            self.__fp.truncate(size + self.__fp_offset)
         except IOError:
             raise PyFATException("Failed to truncate file to given size. "
                                  "Most likely the file can't be extended.",
@@ -1217,9 +1217,6 @@ class PyFat(object):
 
         self.__seek(len(self.bpb_header))
         self.__fp.write(boot_code)
-        # ensure boot loader code is not too big
-        if self.__fp.tell() > 510:
-            raise PyFATException("Boot code to large.")
 
         if fat_type == PyFat.FAT_TYPE_FAT32:
             free_count = (total_sectors_32 - rsvd_sec_cnt -

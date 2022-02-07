@@ -9,6 +9,11 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Fixed
+-----
+
+* (mkfs) Handle offset correct in case of multiple partitions.
+
 1.0.0_ - 2022-02-03
 -------------------
 
