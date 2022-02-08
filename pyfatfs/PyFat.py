@@ -14,7 +14,7 @@ import time
 import warnings
 
 from contextlib import contextmanager
-from io import BufferedReader, FileIO, open, BytesIO, IOBase
+from io import BufferedReader, FileIO, open, BytesIO, IOBase, SEEK_END
 from os import PathLike
 from typing import Union
 
@@ -1053,11 +1053,16 @@ class PyFat(object):
         self.__set_fp(open(filename, mode='rb+'))
 
         if size is None:
-            size = self.__fp_offset - self.__fp.seek(-1)
+            try:
+                size = self.__fp.seek(-self.__fp_offset, SEEK_END)
+            except OSError:
+                raise PyFATException("Unable to determine partition size.",
+                                     errno=errno.EFBIG)
+            self.__fp.seek(0)
 
         try:
             self.__fp.truncate(size + self.__fp_offset)
-        except IOError:
+        except OSError:
             raise PyFATException("Failed to truncate file to given size. "
                                  "Most likely the file can't be extended.",
                                  errno=errno.EFBIG)

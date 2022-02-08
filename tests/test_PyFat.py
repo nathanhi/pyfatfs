@@ -222,3 +222,20 @@ def test_mark_clean_fat32():
             assert pf.fat[1] == 0xDADBEEF
             assert pf.bpb_header["BS_Reserved1"] == 0x0
             assert ff.call_count == 1
+
+
+def test_mkfs_no_size():
+    """Test size detection of mkfs."""
+    pf = PyFat()
+    part_sz = 1024 * 1024
+    in_memory_fs = BytesIO(b'\0' * part_sz)
+    pf._PyFat__fp = in_memory_fs
+    with mock.patch('pyfatfs.PyFat.PyFat._PyFat__set_fp',
+                    mock.Mock()):
+        with mock.patch('pyfatfs.PyFat.open'):
+            pf.mkfs("/this/does/not/exist.img",
+                    fat_type=PyFat.FAT_TYPE_FAT12,
+                    label="FAT12TST")
+            pf.flush_fat()
+
+    in_memory_fs.seek(0)
