@@ -3,6 +3,7 @@
 
 """FAT and BPB parsing for files."""
 
+import datetime
 import errno
 import itertools
 
@@ -1135,9 +1136,9 @@ class PyFat(object):
         rsvd_sec_cnt = 32 if fat_type == PyFat.FAT_TYPE_FAT32 else 1
 
         # fat size calculation taken from fatgen103.doc
-        root_dir_sectors = \
+        self.root_dir_sectors = \
             ((root_ent_cnt * 32) + (sector_size - 1)) // sector_size
-        tmp_val1 = size - (rsvd_sec_cnt + root_dir_sectors)
+        tmp_val1 = size - (rsvd_sec_cnt + self.root_dir_sectors)
         tmp_val2 = (256 * sec_per_clus) + number_of_fats
         if fat_type == PyFat.FAT_TYPE_FAT32:
             tmp_val2 = tmp_val2 // 2
@@ -1161,6 +1162,7 @@ class PyFat(object):
             if fat_type == PyFat.FAT_TYPE_FAT32 \
             else FAT12BootSectorHeader()
 
+        self.root_dir_sector = rsvd_sec_cnt + (self._fat_size * number_of_fats)
         self.bytes_per_cluster = sec_per_clus * sector_size
         self.first_data_sector = \
             rsvd_sec_cnt + number_of_fats * self._fat_size
@@ -1203,7 +1205,7 @@ class PyFat(object):
         self.__verify_bpb_header()
 
         # write fat sector
-        self.fat = [0] * (self._fat_size * sector_size)
+        self.fat = [0] * self.bpb_header["BPB_BytsPerSec"]
         if fat_type == PyFat.FAT_TYPE_FAT12:
             self.fat[0] = 0x0FF0 | (self.bpb_header["BPB_Media"] % 0xF)
             self.fat[1] = PyFat.FAT12_SPECIAL_EOC
@@ -1238,5 +1240,17 @@ class PyFat(object):
 
             self.__seek(512 + backup_offset)
             self.__fp.write(bytes(fsinfo))
+
+        self.parse_root_dir()
+        vol_label_in_8_3 = EightDotThree(encoding=self.encoding)
+        vol_label_in_8_3.set_str_name(
+            EightDotThree.make_8dot3_name(label[:11], self.root_dir))
+        volume_file = FATDirectoryEntry.new(
+            name=vol_label_in_8_3,
+            tz=datetime.timezone.utc,
+            encoding=self.encoding,
+            attr=FATDirectoryEntry.ATTR_VOLUME_ID)
+        self.root_dir.add_subdirectory(volume_file)
+        self.update_directory_entry(self.root_dir)
 
         self._write_bpb_header()
