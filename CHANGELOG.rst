@@ -13,6 +13,8 @@ Fixed
 -----
 
 * (mkfs) Handle offset correct in case of multiple partitions.
+* (mkfs) `Issue #18 <https://github.com/nathanhi/pyfatfs/issues/18>` Add volume label dir entry
+* (mkfs) Fix default size detection
 
 1.0.0_ - 2022-02-03
 -------------------
