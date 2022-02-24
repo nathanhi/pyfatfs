@@ -9,6 +9,14 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+1.0.2_ - 2022-02-27
+-------------------
+
+Fixed
+-----
+
+* `PR #23 <https://github.com/nathanhi/pyfatfs/pull/23>`_: Do not try to write FAT if filesystem has been opened read-only by `@abrasive <https://github.com/abrasive>`_
+
 1.0.1_ - 2022-02-08
 -------------------
 
