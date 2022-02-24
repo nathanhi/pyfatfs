@@ -112,7 +112,8 @@ class FatIO(io.RawIOBase):
     def close(self) -> None:
         """Close open file handles assuming lock handle."""
         self.seek(0)
-        self.fs.flush_fat()
+        if self.mode.writing:
+            self.fs.flush_fat()
         super().close()
 
     def readable(self) -> bool:
