@@ -148,8 +148,7 @@ class FATDirectoryEntry:
     @staticmethod
     def __combine_dosdatetime(dt, tm) -> DosDateTime:
         dt = DosDateTime.deserialize_date(dt)
-        dt.combine(dt, DosDateTime.deserialize_time(tm))
-        return dt
+        return dt.combine(dt, DosDateTime.deserialize_time(tm))
 
     def get_checksum(self) -> int:
         """Get calculated checksum of this directory entry.

@@ -9,6 +9,14 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+1.0.3_ - 2022-02-27
+-------------------
+
+Fixed
+-----
+
+* `Issue #22 <https://github.com/nathanhi/pyfatfs/issues/22>`_: Properly combine date and time `DosDateTime` objects when querying ctime/mtime
+
 1.0.2_ - 2022-02-27
 -------------------
 
@@ -146,7 +154,9 @@ Fixed
 * `PR #2 <https://github.com/nathanhi/pyfatfs/pull/2>`_: Fix DOS time conversion by `@koolkdev <https://github.com/koolkdev>`_
 * `PR #3 <https://github.com/nathanhi/pyfatfs/pull/3>`_: Fix reading from a file and implement arbitrary write by `@koolkdev <https://github.com/koolkdev>`_
 
-.. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v1.0.1...HEAD
+.. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v1.0.3...HEAD
+.. _1.0.3: https://github.com/nathanhi/pyfatfs/compare/v1.0.2...v1.0.3
+.. _1.0.2: https://github.com/nathanhi/pyfatfs/compare/v1.0.1...v1.0.2
 .. _1.0.1: https://github.com/nathanhi/pyfatfs/compare/v1.0.0...v1.0.1
 .. _1.0.0: https://github.com/nathanhi/pyfatfs/compare/v0.3.1...v1.0.0
 .. _0.3.1: https://github.com/nathanhi/pyfatfs/compare/v0.3.0...v0.3.1
