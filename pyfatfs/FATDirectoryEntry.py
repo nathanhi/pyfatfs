@@ -3,6 +3,7 @@
 """Directory entry operations with PyFAT."""
 import posixpath
 import struct
+import warnings
 
 from time import timezone
 
@@ -94,7 +95,11 @@ class FATDirectoryEntry:
 
         # Handle LFN entries
         self.lfn_entry = None
-        self.set_lfn_entry(lfn_entry)
+        try:
+            self.set_lfn_entry(lfn_entry)
+        except BrokenLFNEntryException:
+            warnings.warn("Broken LFN entry detected, omitting "
+                          "long file name.")
 
         self.__dirs = []
         self.__encoding = encoding

@@ -10,15 +10,20 @@ Unreleased_
 -----------
 
 Fixed
------
+~~~~~
 
 * `Issue #24 <https://github.com/nathanhi/pyfatfs/issues/24>`_: Do not reorder directory entries when adding/removing entries in a directory
+
+Changed
+~~~~~~~
+
+* Only warn of broken long filename entries, do not fail when encountering them
 
 1.0.3_ - 2022-02-27
 -------------------
 
 Fixed
------
+~~~~~
 
 * `Issue #22 <https://github.com/nathanhi/pyfatfs/issues/22>`_: Properly combine date and time `DosDateTime` objects when querying ctime/mtime
 
@@ -26,7 +31,7 @@ Fixed
 -------------------
 
 Fixed
------
+~~~~~
 
 * `PR #23 <https://github.com/nathanhi/pyfatfs/pull/23>`_: Do not try to write FAT if filesystem has been opened read-only by `@abrasive <https://github.com/abrasive>`_
 
@@ -34,7 +39,7 @@ Fixed
 -------------------
 
 Fixed
------
+~~~~~
 
 * (mkfs) Handle offset correct in case of multiple partitions.
 * (mkfs) `Issue #18 <https://github.com/nathanhi/pyfatfs/issues/18>` Add volume label dir entry
