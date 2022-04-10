@@ -38,7 +38,7 @@ def _get_readme():
 
 setup(name=_get_attribute('__name__'),
       use_scm_version=True,
-      description='FAT12/16/32 implementation with VFAT support',
+      description='FAT12/FAT16/FAT32 implementation with VFAT support',
       long_description=_get_readme(),
       long_description_content_type='text/x-rst',
       author=_get_attribute('__author__'),
