@@ -96,7 +96,7 @@ class FATDirectoryEntry:
         self.lfn_entry = None
         self.set_lfn_entry(lfn_entry)
 
-        self.__dirs = set()
+        self.__dirs = []
         self.__encoding = encoding
 
     @staticmethod
@@ -351,6 +351,12 @@ class FATDirectoryEntry:
 
         return True
 
+    def _get_entries_raw(self):
+        """Get a full list of entries in current directory."""
+        self._verify_is_directory()
+
+        return self.__dirs
+
     def get_entries(self):
         """Get entries of directory.
 
@@ -362,9 +368,7 @@ class FATDirectoryEntry:
         files = []
         specials = []
 
-        self._verify_is_directory()
-
-        for d in self.__dirs:
+        for d in self._get_entries_raw():
             if d.is_special() or d.is_volume_id():
                 # Volume IDs and dot/dotdot entries
                 specials += [d]
@@ -442,7 +446,7 @@ class FATDirectoryEntry:
         self._verify_is_directory()
 
         dir_entry._add_parent(self)
-        self.__dirs.add(dir_entry)
+        self.__dirs += [dir_entry]
 
     def mark_empty(self):
         """Mark this directory entry as empty."""
@@ -460,10 +464,8 @@ class FATDirectoryEntry:
         **NOTE:** This will also remove special entries such
         as ».«, »..« and volume labels!
         """
-        d, f, s = self.get_entries()
-
         # Iterate all entries
-        for dir_entry in d + f + s:
+        for dir_entry in self._get_entries_raw():
             sn = dir_entry.get_short_name()
             try:
                 ln = dir_entry.get_long_name()

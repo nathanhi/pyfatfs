@@ -18,3 +18,84 @@ def test_bytes_0xe5():
     assert bytes(dentry)[:2] == b'\xe5\xf2'
     assert bytes(dentry)[:8][-2:] == b'\xe5\xf2'
     assert str(dentry) == "褪せる褪"
+
+
+def test_get_entries_raw():
+    """Test that _get_entries_raw returns an unsorted list of entries."""
+    tz = datetime.timezone.utc
+    rootdir = FATDirectoryEntry.new(name="rootdir", tz=tz, encoding='ASCII',
+                                    attr=FATDirectoryEntry.ATTR_DIRECTORY)
+    entries = [("1", FATDirectoryEntry.ATTR_READ_ONLY),
+               ("3", 0),
+               ("2", FATDirectoryEntry.ATTR_DIRECTORY),
+               ("a", 0),
+               ("4", FATDirectoryEntry.ATTR_DIRECTORY),
+               ("11", FATDirectoryEntry.ATTR_SYSTEM)]
+    for (name, attr) in entries:
+        rootdir.add_subdirectory(FATDirectoryEntry.new(name, tz=tz,
+                                                       encoding='ASCII',
+                                                       attr=attr))
+
+    i = 0
+    for e in rootdir._get_entries_raw():
+        assert e.name == entries[i][0]
+        assert e.attr == entries[i][1]
+        i += 1
+
+
+def test_walk():
+    """Test that walk behaves like os.walk."""
+    tz = datetime.timezone.utc
+    sfn = EightDotThree()
+    sfn.initialized = True
+    sfn.name = b"ROOTDIR"
+    rootdir = FATDirectoryEntry.new(name=sfn, tz=tz, encoding='ASCII',
+                                    attr=FATDirectoryEntry.ATTR_DIRECTORY)
+    entries = [(b".", 0),
+               (b"..", 0),
+               (b"1", FATDirectoryEntry.ATTR_READ_ONLY),
+               (b"3", 0),
+               (b"2", FATDirectoryEntry.ATTR_DIRECTORY),
+               (b"a", 0),
+               (b"4", FATDirectoryEntry.ATTR_DIRECTORY),
+               (b"11", FATDirectoryEntry.ATTR_SYSTEM)]
+
+    # Build directory tree
+    for (name, attr) in entries:
+        sfn = EightDotThree()
+        sfn.initialized = True
+        sfn.name = name
+        dentry = FATDirectoryEntry.new(sfn, tz=tz,
+                                       encoding='ASCII',
+                                       attr=attr)
+        if attr == FATDirectoryEntry.ATTR_DIRECTORY:
+            for (subname, subattr) in entries:
+                if entries == FATDirectoryEntry.ATTR_DIRECTORY:
+                    continue
+                sfn = EightDotThree()
+                sfn.initialized = True
+                sfn.name = subname
+                subdentry = FATDirectoryEntry.new(sfn, tz=tz,
+                                                  encoding='ASCII',
+                                                  attr=subattr)
+                dentry.add_subdirectory(subdentry)
+        rootdir.add_subdirectory(dentry)
+
+    roots = [b"/",
+             b"ROOTDIR/2", b"ROOTDIR/2/2", b"ROOTDIR/2/4",
+             b"ROOTDIR/4", b"ROOTDIR/4/2", b"ROOTDIR/4/4"]
+    dirs = [[b"2", b"4"], [b"2", b"4"], [], [], [b"2", b"4"], [], []]
+    files = [[b"1", b"3", b"a", b"11"],
+             [b"1", b"3", b"a", b"11"],
+             [], [],
+             [b"1", b"3", b"a", b"11"],
+             [], []]
+    for _root, _dirs, _files in rootdir.walk():
+        assert _root.encode('ASCII') == roots[0]
+        roots.pop(0)
+        for i, d in enumerate(dirs[0]):
+            assert bytes(_dirs[i].name) == d
+        dirs.pop(0)
+        for i, f in enumerate(files[0]):
+            assert bytes(_files[i].name) == f
+        files.pop(0)
