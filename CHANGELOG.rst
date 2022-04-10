@@ -9,6 +9,11 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Fixed
+-----
+
+* `Issue #24 <https://github.com/nathanhi/pyfatfs/issues/24>`_: Do not reorder directory entries when adding/removing entries in a directory
+
 1.0.3_ - 2022-02-27
 -------------------
 

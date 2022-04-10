@@ -5,7 +5,6 @@
 
 import datetime
 import errno
-import itertools
 
 import math
 import struct
@@ -591,8 +590,7 @@ class PyFat(object):
 
         # Gather all directory entries
         dir_entries = b''
-        d, f, s = dir_entry.get_entries()
-        for d in list(itertools.chain(d, f, s)):
+        for d in dir_entry._get_entries_raw():
             dir_entries += bytes(d)
 
         # Write content
