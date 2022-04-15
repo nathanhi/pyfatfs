@@ -214,7 +214,8 @@ class FatIO(io.RawIOBase):
             self.write(b'\0' * (size - self.dir_entry.get_size()))
             self.seek(cur_pos)
         elif size < self.dir_entry.get_size():
-            num_clusters = self.fs.calc_num_clusters(size)
+            # Always keep at least one cluster allocated
+            num_clusters = max(1, self.fs.calc_num_clusters(size))
             i = 0
             for c in self.fs.get_cluster_chain(self.dir_entry.get_cluster()):
                 i += 1
