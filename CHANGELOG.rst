@@ -13,6 +13,7 @@ Fixed
 ~~~~~
 
 * `Issue #24 <https://github.com/nathanhi/pyfatfs/issues/24>`_: Do not reorder directory entries when adding/removing entries in a directory
+* `Issue #25 <https://github.com/nathanhi/pyfatfs/issues/25>`_: Properly truncate files when configured for truncating (PyFilesystem2/FatIO)
 
 Changed
 ~~~~~~~

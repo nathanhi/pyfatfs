@@ -46,6 +46,9 @@ class FatIO(io.RawIOBase):
         #: Current cluster chain offset (in bytes)
         self.__coffpos = 0
 
+        if self.mode.truncate:
+            self.seek(0)
+            self.truncate()
         if self.mode.appending:
             self.seek(0, 2)
 
