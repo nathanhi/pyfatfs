@@ -59,6 +59,16 @@ class TestPyFatFS16(FSTestCases, TestCase):
         new_info = self.fs.getinfo("/test")
         assert orig_info != new_info
 
+    def test_writetest_truncates(self):
+        """Verify that writetest() properly truncates file contents."""
+        fname = "/truncatetest.txt"
+        self.fs.create(fname)
+        self.fs.writetext(fname, '0' * 64)
+        assert self.fs.readtext(fname) == '0' * 64
+        self.fs.writetext(fname, '1' * 16)
+        assert len(self.fs.readtext(fname)) == 16
+        assert self.fs.readtext(fname) == '1' * 16
+
 
 class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase):
     """Integration tests with PyFilesystem2 for FAT32."""
