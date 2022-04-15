@@ -15,6 +15,7 @@ Fixed
 * `Issue #24 <https://github.com/nathanhi/pyfatfs/issues/24>`_: Do not reorder directory entries when adding/removing entries in a directory
 * `Issue #25 <https://github.com/nathanhi/pyfatfs/issues/25>`_: Properly truncate files when configured for truncating (PyFilesystem2/FatIO)
 * Always retain last cluster when truncating a file to 0 bytes
+* `Issue #27 <https://github.com/nathanhi/pyfatfs/issues/27>`_: Remove outdated `Not yet properly implemented` hint from setinfo docstring
 
 Changed
 ~~~~~~~

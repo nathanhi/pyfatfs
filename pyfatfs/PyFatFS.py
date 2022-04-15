@@ -463,7 +463,7 @@ class PyFatFS(FS):
         return factory(self, path)
 
     def setinfo(self, path: str, info):
-        """Not yet properly implemented."""
+        """Set file meta information such as timestamps."""
         details = info.get('details', {})
         dentry = self._get_dir_entry(path)
 
