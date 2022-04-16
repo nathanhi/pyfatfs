@@ -9,6 +9,14 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+1.0.5_ - 2022-04-16
+-------------------
+
+Fixed
+~~~~~
+
+* `Issue #26 <https://github.com/nathanhi/pyfatfs/issues/26>`_: Fix deserialization of date and time values ({a,c,m}time)
+
 1.0.4_ - 2022-04-15
 -------------------
 
