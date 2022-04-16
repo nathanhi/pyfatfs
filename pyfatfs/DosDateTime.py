@@ -32,9 +32,9 @@ class DosDateTime(datetime):
     @staticmethod
     def deserialize_date(dt: int) -> "DosDateTime":
         """Convert a DOS date format to a Python object."""
-        day = dt & ((1 << 5) - 1)
+        day = dt & (1 << 5) - 1
         month = (dt >> 5) & ((1 << 4) - 1)
-        year = ((dt >> 9) & (1 << 8) - 1) + 1980
+        year = ((dt >> 9) & (1 << 7) - 1) + 1980
 
         try:
             return DosDateTime(year, month, day)
@@ -45,6 +45,6 @@ class DosDateTime(datetime):
     def deserialize_time(tm: int) -> time:
         """Convert a DOS time format to a Python object."""
         second = (tm & (1 << 5) - 1) * 2
-        minute = (tm >> 5) & ((1 << 5) - 1)
+        minute = (tm >> 5) & ((1 << 6) - 1)
         hour = (tm >> 11) & ((1 << 5) - 1)
         return time(hour, minute, second)
