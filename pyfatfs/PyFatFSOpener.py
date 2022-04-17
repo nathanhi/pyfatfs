@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """Registers the PyFatFSOpener used by PyFilesystem2."""
 
+import warnings
+from typing import get_type_hints
+
 from fs.opener.parse import ParseResult
 
 __all__ = ['PyFatFSOpener']
@@ -16,17 +19,31 @@ class PyFatFSOpener(Opener):
     protocols = ['fat']
 
     @staticmethod
+    def __convert_bool(value: str) -> bool:
+        """Convert given string to bool."""
+        if value.lower() in ['true', '1', 't', 'y']:
+            return True
+        elif value.lower() in ['false', '0', 'f', 'n']:
+            return False
+        raise ValueError(f'Invalid parameter supplied, cannot '
+                         f'convert to boolean parameter: {value}')
+
+    @staticmethod
     def __param_parse(params: dict) -> dict:
-        """Parse parameters and convert strings to bool."""
-        _params = params.copy()
+        """Parse parameters and convert to correct type."""
+        _params = {}
+        types = get_type_hints(PyFatFS.__init__)
         for p in params:
-            v = params[p]
-            if isinstance(v, str):
-                if v.lower() in ['true', '1', 't', 'y']:
-                    v = True
-                elif v.lower() in ['false', '0', 'f', 'n']:
-                    v = False
-            _params[p] = v
+            try:
+                t = types[p]
+            except KeyError:
+                warnings.warn(f'Unknown opener argument \'{p}\' specified.')
+                continue
+
+            if t == bool:
+                t = PyFatFSOpener.__convert_bool
+
+            _params[p] = t(params[p])
         return _params
 
     def open_fs(self, fs_url: str,  # pylint: disable=R0201

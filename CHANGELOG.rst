@@ -13,6 +13,8 @@ Changed
 ~~~~~~~
 
 * Only warn of broken long filename entries, do not fail when encountering them
+* Convert given PyFilesystem2 opener string arguments to correct type (e.g., string to int)
+* Discard unknown PyFilesystem2 opener arguments, do not pass through to underlying PyFatFS constructor
 
 1.0.5_ - 2022-04-16
 -------------------
