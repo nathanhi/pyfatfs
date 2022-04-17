@@ -15,6 +15,8 @@ Changed
 * Only warn of broken long filename entries, do not fail when encountering them
 * Convert given PyFilesystem2 opener string arguments to correct type (e.g., string to int)
 * Discard unknown PyFilesystem2 opener arguments, do not pass through to underlying PyFatFS constructor
+* Lazy load directory entries for performance and `regex2fat <https://github.com/8051Enthusiast/regex2fat>`_ compatibility
+   - Introduce ``lazy_load`` parameter to allow restoring previous behavior
 
 1.0.5_ - 2022-04-16
 -------------------
@@ -33,7 +35,7 @@ Fixed
 * `Issue #24 <https://github.com/nathanhi/pyfatfs/issues/24>`_: Do not reorder directory entries when adding/removing entries in a directory
 * `Issue #25 <https://github.com/nathanhi/pyfatfs/issues/25>`_: Properly truncate files when configured for truncating (PyFilesystem2/FatIO)
 * Always retain last cluster when truncating a file to 0 bytes
-* `Issue #27 <https://github.com/nathanhi/pyfatfs/issues/27>`_: Remove outdated `Not yet properly implemented` hint from setinfo docstring
+* `Issue #27 <https://github.com/nathanhi/pyfatfs/issues/27>`_: Remove outdated ``Not yet properly implemented`` hint from setinfo docstring
 
 1.0.3_ - 2022-02-27
 -------------------
@@ -41,7 +43,7 @@ Fixed
 Fixed
 ~~~~~
 
-* `Issue #22 <https://github.com/nathanhi/pyfatfs/issues/22>`_: Properly combine date and time `DosDateTime` objects when querying ctime/mtime
+* `Issue #22 <https://github.com/nathanhi/pyfatfs/issues/22>`_: Properly combine date and time ``DosDateTime`` objects when querying ctime/mtime
 
 1.0.2_ - 2022-02-27
 -------------------
@@ -58,7 +60,7 @@ Fixed
 ~~~~~
 
 * (mkfs) Handle offset correct in case of multiple partitions.
-* (mkfs) `Issue #18 <https://github.com/nathanhi/pyfatfs/issues/18>` Add volume label dir entry
+* (mkfs) `Issue #18 <https://github.com/nathanhi/pyfatfs/issues/18>`_ Add volume label dir entry
 * (mkfs) Fix default size detection
 
 1.0.0_ - 2022-02-03
@@ -180,7 +182,8 @@ Fixed
 * `PR #2 <https://github.com/nathanhi/pyfatfs/pull/2>`_: Fix DOS time conversion by `@koolkdev <https://github.com/koolkdev>`_
 * `PR #3 <https://github.com/nathanhi/pyfatfs/pull/3>`_: Fix reading from a file and implement arbitrary write by `@koolkdev <https://github.com/koolkdev>`_
 
-.. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v1.0.4...HEAD
+.. _Unreleased: https://github.com/nathanhi/pyfatfs/compare/v1.0.5...HEAD
+.. _1.0.5: https://github.com/nathanhi/pyfatfs/compare/v1.0.4...v1.0.5
 .. _1.0.4: https://github.com/nathanhi/pyfatfs/compare/v1.0.3...v1.0.4
 .. _1.0.3: https://github.com/nathanhi/pyfatfs/compare/v1.0.2...v1.0.3
 .. _1.0.2: https://github.com/nathanhi/pyfatfs/compare/v1.0.1...v1.0.2

@@ -55,12 +55,15 @@ class FATDirectoryEntry:
                           "DIR_WrtDate", "DIR_FstClusLO",
                           "DIR_FileSize"]
 
-    def __init__(self, DIR_Name: EightDotThree, DIR_Attr: int,
+    def __init__(self,
+                 DIR_Name: EightDotThree, DIR_Attr: int,
                  DIR_NTRes: int, DIR_CrtTimeTenth: int,
                  DIR_CrtTime: int, DIR_CrtDate: int, DIR_LstAccessDate: int,
                  DIR_FstClusHI: int, DIR_WrtTime: int, DIR_WrtDate: int,
                  DIR_FstClusLO: int, DIR_FileSize: int,
-                 encoding: str = FAT_OEM_ENCODING, lfn_entry=None):
+                 encoding: str = FAT_OEM_ENCODING,
+                 fs: "pyfatfs.PyFat.PyFat" = None,  # noqa: F821
+                 lazy_load: bool = False, lfn_entry=None):
         """FAT directory entry constructor.
 
         :param DIR_Name: `EightDotThree` class instance
@@ -90,6 +93,9 @@ class FATDirectoryEntry:
         self.wrtdate = int(DIR_WrtDate)
         self.fstcluslo = int(DIR_FstClusLO)
         self.filesize = int(DIR_FileSize)
+
+        self.__lazy_load = lazy_load
+        self.__fs = fs
 
         self._parent = None
 
@@ -187,6 +193,9 @@ class FATDirectoryEntry:
 
         :returns: Entry size in bytes as int
         """
+        if self.is_directory():
+            self.__populate_dirs()
+
         sz = self.FAT_DIRECTORY_HEADER_SIZE
         if isinstance(self.lfn_entry, FATLongDirectoryEntry):
             sz *= len(self.lfn_entry.lfn_entries)
@@ -348,6 +357,7 @@ class FATDirectoryEntry:
     def is_empty(self):
         """Determine if directory does not contain any directories."""
         self._verify_is_directory()
+        self.__populate_dirs()
 
         for d in self.__dirs:
             if d.is_special():
@@ -356,9 +366,17 @@ class FATDirectoryEntry:
 
         return True
 
+    def __populate_dirs(self):
+        if self.__lazy_load is False:
+            return
+
+        clus = self.get_cluster()
+        self.__dirs = self.__fs.parse_dir_entries_in_cluster_chain(clus)
+
     def _get_entries_raw(self):
         """Get a full list of entries in current directory."""
         self._verify_is_directory()
+        self.__populate_dirs()
 
         return self.__dirs
 
@@ -425,6 +443,9 @@ class FATDirectoryEntry:
         :returns: tuple: root (current path, full),
                          dirs (all dirs), files (all files)
         """
+        self._verify_is_directory()
+        self.__populate_dirs()
+
         root = self.get_full_path()
         dirs, files, _ = self.get_entries()
 
@@ -439,7 +460,7 @@ class FATDirectoryEntry:
 
             yield from d.walk()
 
-    def add_subdirectory(self, dir_entry):
+    def add_subdirectory(self, dir_entry, recursive: bool = True):
         """Register a subdirectory in current directory entry.
 
         :param dir_entry: FATDirectoryEntry
@@ -449,6 +470,7 @@ class FATDirectoryEntry:
         """
         # Check if current dir entry is even a directory!
         self._verify_is_directory()
+        self.__populate_dirs()
 
         dir_entry._add_parent(self)
         self.__dirs += [dir_entry]
@@ -469,6 +491,8 @@ class FATDirectoryEntry:
         **NOTE:** This will also remove special entries such
         as ».«, »..« and volume labels!
         """
+        self._verify_is_directory()
+        self.__populate_dirs()
         # Iterate all entries
         for dir_entry in self._get_entries_raw():
             sn = dir_entry.get_short_name()

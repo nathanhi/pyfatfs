@@ -98,7 +98,8 @@ class PyFat(object):
 
     def __init__(self,
                  encoding: str = 'ibm437',
-                 offset: int = 0):
+                 offset: int = 0,
+                 lazy_load: bool = True):
         """Set up PyFat class instance.
 
         :param encoding: Define encoding to use for filenames
@@ -121,6 +122,7 @@ class PyFat(object):
         self.initialized = False
         self.encoding = encoding
         self.is_read_only = True
+        self.lazy_load = lazy_load
         self.__lock = threading.Lock()
 
     def __set_fp(self, fp: Union[IOBase, BytesIO]):
@@ -239,8 +241,6 @@ class PyFat(object):
             self._mark_dirty()
 
         # Parse root directory
-        # TODO: Inefficient to always recursively parse the root dir.
-        #       It would make sense to parse it on demand instead.
         self.parse_root_dir()
 
     def open(self, filename: Union[str, PathLike], read_only: bool = False):
@@ -647,14 +647,16 @@ class PyFat(object):
 
         # Follow root directory cluster chain
         for dir_entry in self.parse_dir_entries_in_cluster_chain(root_cluster):
-            self.root_dir.add_subdirectory(dir_entry)
+            self.root_dir.add_subdirectory(dir_entry,
+                                           recursive=not self.lazy_load)
 
     def parse_root_dir(self):
         """Parse root directory entry."""
         root_dir_sfn = EightDotThree()
         root_dir_sfn.set_str_name("")
         dir_attr = FATDirectoryEntry.ATTR_DIRECTORY
-        self.root_dir = FATDirectoryEntry(DIR_Name=root_dir_sfn,
+        self.root_dir = FATDirectoryEntry(fs=self,
+                                          DIR_Name=root_dir_sfn,
                                           DIR_Attr=dir_attr,
                                           DIR_NTRes=0,
                                           DIR_CrtTimeTenth=0,
@@ -748,24 +750,25 @@ class PyFat(object):
                 # Ignore incomplete LFN entries altogether
                 tmp_lfn_entry = None
 
-            dir_entry = FATDirectoryEntry(encoding=self.encoding,
+            dir_entry = FATDirectoryEntry(fs=self,
+                                          encoding=self.encoding,
                                           lfn_entry=tmp_lfn_entry,
+                                          lazy_load=self.lazy_load,
                                           **dir_hdr)
             dir_entries += [dir_entry]
 
-            if dir_entry.is_directory() and not dir_entry.is_special():
-                # Iterate all subdirectories except for dot and dotdot
-                cluster = dir_entry.get_cluster()
-                subdirs = self.parse_dir_entries_in_cluster_chain(cluster)
-                for d in subdirs:
-                    dir_entry.add_subdirectory(d)
+            if not self.lazy_load:
+                if dir_entry.is_directory() and not dir_entry.is_special():
+                    # Iterate all subdirectories except for dot and dotdot
+                    for d in dir_entry.get_entries()[0]:
+                        dir_entry.add_subdirectory(d)
 
             # Reset temporary LFN entry
             tmp_lfn_entry = FATLongDirectoryEntry()
 
         return dir_entries, tmp_lfn_entry
 
-    def parse_dir_entries_in_cluster_chain(self, cluster):
+    def parse_dir_entries_in_cluster_chain(self, cluster) -> list:
         """Parse directory entries while following given cluster chain."""
         dir_entries = []
         tmp_lfn_entry = FATLongDirectoryEntry()

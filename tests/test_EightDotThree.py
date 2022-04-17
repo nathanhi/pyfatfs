@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Tests the 8DOT3 short name module."""
+import errno
 import string
 import random
 from unittest import mock
@@ -16,6 +17,15 @@ def test_bytename_set_invalid_length():
     for n in [b'', b'1234567890', b'123456789011']:
         with pytest.raises(ValueError):
             sfn.set_byte_name(n)
+
+
+def test_bytename_set_non_bytes():
+    """Test that a byte name only accepts bytes."""
+    sfn = EightDotThree()
+    for n in ['FILENAME.TXT', 1234, bytearray('FILENAME.TXT', 'ASCII')]:
+        with pytest.raises(TypeError) as e:
+            sfn.set_byte_name(n)
+            assert e.errno == errno.EINVAL
 
 
 def test_bytename_set_not_a_directory_last_entry():
@@ -157,3 +167,19 @@ def test_is_8dot3_conform_true():
 def test_is_8dot3_conform_false():
     """Test that non-8.3 file names are correctly detected."""
     assert not EightDotThree.is_8dot3_conform("This is a Long file.txt")
+
+
+def test_set_str_name_non_str():
+    """Test that set_str_name raises an exception on unsupported types."""
+    sfn = EightDotThree()
+    with pytest.raises(TypeError):
+        sfn.set_str_name(b"FILENAME.TXT")
+
+
+def test_set_str_name_non8dot3():
+    """Test that set_str_name raises an exception on non-conformant names."""
+    sfn = EightDotThree()
+    for n in [b'FILENAME.TXT', 1234, bytearray('FILENAME.TXT', 'ASCII')]:
+        with pytest.raises(TypeError) as e:
+            sfn.set_str_name(n)
+            assert e.errno == errno.EINVAL

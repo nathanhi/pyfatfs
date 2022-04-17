@@ -33,7 +33,8 @@ class PyFatFS(FS):
 
     def __init__(self, filename: str, encoding: str = FAT_OEM_ENCODING,
                  offset: int = 0, preserve_case: bool = True,
-                 read_only: bool = False, utc: bool = False):
+                 read_only: bool = False, utc: bool = False,
+                 lazy_load: bool = True):
         """PyFilesystem2 FAT constructor, initializes self.fs.
 
         :param filename: `str`: Name of file/device to open as FAT partition.
@@ -49,10 +50,13 @@ class PyFatFS(FS):
         :param utc: `bool`: Store timestamps in UTC rather than the local time.
                     This applies to dentry creation, modification and last
                     access time.
+        :param lazy_load: `bool`: Load directory entries on-demand instead of
+                          parsing the entire directory listing on mount.
         """
         super(PyFatFS, self).__init__()
         self.preserve_case = preserve_case
-        self.fs = PyFat(encoding=encoding, offset=int(offset))
+        self.fs = PyFat(encoding=encoding, offset=int(offset),
+                        lazy_load=lazy_load)
         self.fs.open(filename, read_only=read_only)
 
         if utc:
@@ -491,7 +495,7 @@ class PyFatBytesIOFS(PyFatFS):
     def __init__(self, fp: Union[IOBase, BytesIO],
                  encoding: str = FAT_OEM_ENCODING,
                  offset: int = 0, preserve_case: bool = True,
-                 utc: bool = False):
+                 utc: bool = False, lazy_load: bool = True):
         """PyFilesystem2 FAT constructor, initializes self.fs with BytesIO.
 
         :param fp: `BytesIO` / `IOBase`: Open file, either in-memory
@@ -506,10 +510,13 @@ class PyFatBytesIOFS(PyFatFS):
         :param utc: `bool`: Store timestamps in UTC rather than the local time.
                     This applies to dentry creation, modification and last
                     access time.
+        :param lazy_load: `bool`: Load directory entries on-demand instead of
+                          parsing the entire directory listing on mount.
         """
         super(PyFatFS, self).__init__()
         self.preserve_case = preserve_case
-        self.fs = PyFat(encoding=encoding, offset=int(offset))
+        self.fs = PyFat(encoding=encoding, offset=int(offset),
+                        lazy_load=lazy_load)
         self.fs.set_fp(fp)
 
         if utc:

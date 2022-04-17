@@ -105,8 +105,8 @@ preserve_case
 ^^^^^^^^^^^^^
 
 Preserve case when creating files. This will force LFN entries for all
-created files that do not match the 8DOT3 rules. This defaults to true
-but can be disabled by setting preserve_case to false:
+created files that do not match the 8DOT3 rules. This defaults to ``true``
+but can be disabled by setting preserve_case to ``false``:
 
 .. code-block:: python
 
@@ -118,7 +118,7 @@ read_only
 ^^^^^^^^^
 
 Open filesystem in read-only mode and thus don't allow writes/modifications.
-This defaults to false but can be enabled by setting read_only to true:
+This defaults to false but can be enabled by setting read_only to ``true``:
 
 .. code-block:: python
 
@@ -138,6 +138,17 @@ Affects all directory entries' creation, modification and access times.
     my_fs = fs.open_fs("fat:///dev/sda1?utc=true")
 
 
+lazy_load
+^^^^^^^^^
+
+If set to ``true`` (default), the directory entries are loaded only when accessed
+to increase performance with larger filesystems and resilience against
+recursion / directory loops.
+
+.. code-block:: python
+
+    import fs
+    my_fs = fs.open_fs("fat:///dev/sda1?lazy_load=false")
 .. pyfilesystem-quickstart-end
 
 Testing

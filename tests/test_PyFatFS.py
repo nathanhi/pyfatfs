@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Tests from PyFilesystem2."""
-
+import os
 from datetime import datetime
 from unittest import TestCase, mock
 from io import BytesIO
@@ -13,6 +13,29 @@ from pyfatfs.PyFat import PyFat
 from pyfatfs.PyFatFS import PyFatBytesIOFS
 
 
+def _make_fs(fat_type: int, **kwargs) -> (PyFatBytesIOFS, BytesIO):
+    """Format new in-memory FS for testing."""
+    pf = PyFat()
+    part_sz = 1024 * 1024 * (4 if fat_type == PyFat.FAT_TYPE_FAT12
+                             else 33)
+    in_memory_fs = BytesIO(b'\0' * part_sz)
+    pf._PyFat__fp = in_memory_fs
+    with mock.patch('pyfatfs.PyFat.PyFat._PyFat__set_fp',
+                    mock.Mock()):
+        with mock.patch('pyfatfs.PyFat.open'):
+            pf.mkfs("/this/does/not/exist.img",
+                    fat_type=fat_type,
+                    label=f"FAT{fat_type}TST",
+                    size=part_sz)
+            pf.flush_fat()
+
+    in_memory_fs.seek(0)
+    in_memory_fs = BytesIO(in_memory_fs.read())
+    return (PyFatBytesIOFS(in_memory_fs,
+                           encoding='UTF-8', **kwargs),
+            in_memory_fs)
+
+
 class TestPyFatFS16(FSTestCases, TestCase):
     """Integration tests with PyFilesystem2 for FAT16."""
 
@@ -20,22 +43,29 @@ class TestPyFatFS16(FSTestCases, TestCase):
 
     def make_fs(self):  # pylint: disable=R0201
         """Create filesystem for PyFilesystem2 integration tests."""
-        pf = PyFat()
-        part_sz = 1024 * 1024 * (4 if self.FAT_TYPE == PyFat.FAT_TYPE_FAT12
-                                 else 33)
-        in_memory_fs = BytesIO(b'\0' * part_sz)
-        pf._PyFat__fp = in_memory_fs
-        with mock.patch('pyfatfs.PyFat.PyFat._PyFat__set_fp',
-                        mock.Mock()):
-            with mock.patch('pyfatfs.PyFat.open'):
-                pf.mkfs("/this/does/not/exist.img",
-                        fat_type=self.FAT_TYPE,
-                        label=f"FAT{self.FAT_TYPE}TST",
-                        size=part_sz)
-                pf.flush_fat()
+        return _make_fs(self.FAT_TYPE)[0]
 
+    def test_lazy_vs_nonlazy_tree(self):
+        """Compare directory tree between lazy and non-lazy loading."""
+        fs1, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=False)
+        dirs = ["/dir1", "/dir1/dir1_2", "/dir1/dir1_2/dir1_2_3",
+                "/dir2", "/dir2/dir2_2", "/dir2/dir2_2/dir2_2_3",
+                "/some/random/DEEP/directory",
+                "/0/1/2/3/4/5/6/8/9",
+                "/0/1/2/3/4/5/6/8/9/10/11/12/13/14/15/16"]
+        for d in dirs:
+            fs1.makedirs(d, recreate=True)
+            fs1.touch(os.path.join(d, "FILE1.TXT"))
+            fs1.touch(os.path.join(d, "This requires an LFN entry.TxT"))
+            fs1.touch(os.path.join(d, "FILE2.TXT"))
+
+        dentries = list(fs1.walk("/"))
         in_memory_fs.seek(0)
-        return PyFatBytesIOFS(BytesIO(in_memory_fs.read()), encoding='UTF-8')
+        fs2 = PyFatBytesIOFS(BytesIO(in_memory_fs.read()),
+                             encoding='UTF-8', lazy_load=True)
+        assert dentries == list(fs2.walk("/"))
+        fs1.close()
+        fs2.close()
 
     def test_create_file_folder_dupe(self):
         """Verify that file creation with duplicate name to a folder fails."""
