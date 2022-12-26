@@ -125,7 +125,7 @@ urllib3==1.26.5
     # via requests
 webencodings==0.5.1
     # via bleach
-wheel==0.36.2
+wheel==0.38.1
     # via -r requirements/in/tasks.in
 zipp==3.4.1
     # via importlib-metadata
