@@ -406,7 +406,7 @@ class PyFatFS(FS):
         :param path: Path to file on filesystem
         :param mode: Mode to open file in
         :param buffering: TBD
-        returns: `BinaryIO` stream
+        :returns: `BinaryIO` stream
         """
         path = self.validatepath(path)
         mode = Mode(mode + 'b')

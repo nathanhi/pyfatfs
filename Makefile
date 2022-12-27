@@ -12,15 +12,15 @@ else
 endif
 
 # Generate virtualenv
-$(VENV_DIR)/install.indicator: pyproject.toml requirements/develop.txt
-	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m piptools sync requirements/develop.txt
-	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -r requirements/develop.txt
+$(VENV_DIR)/install.indicator: pyproject.toml requirements/development.txt
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m piptools sync requirements/development.txt
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -r requirements/development.txt
 	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -e .
 	touch $@
 
 $(VENV_DIR):
 	python3 -m venv $@
-	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -r requirements/develop.txt
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -r requirements/development.txt
 	ln -sf $(VENV_DIR) .venv
 
 .PHONY: venv
@@ -34,7 +34,7 @@ requirements/%.txt: pyproject.toml
 	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m piptools compile --extra $(basename $(notdir $@)) --output-file $@ $<
 
 .PHONY: requirements
-requirements: $(VENV_DIR) requirements/develop.txt
+requirements: $(VENV_DIR) requirements/development.txt
 
 .coverage: venv
 	$(VENV_DIR)/$(VENV_BIN_DIR)/py.test --cov=pyfatfs tests
