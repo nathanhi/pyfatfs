@@ -1,6 +1,6 @@
 PYTHON_VERSION=$(shell python3 -c "import platform; print('.'.join(platform.python_version_tuple()[:-1]))")
 VENV_DIR=.venv_$(PYTHON_VERSION)
-PIP_VERSION=21.3
+PIP_VERSION=22.3
 
 ifeq ($(PYTHON_VERSION),)
 	$(error No Python 3 interpreter found!)
@@ -8,14 +8,13 @@ endif
 
 # Generate virtualenv
 $(VENV_DIR)/install.indicator: pyproject.toml requirements/develop.txt
-	$(VENV_DIR)/bin/pip install -r requirements/develop.txt
 	$(VENV_DIR)/bin/python -m piptools sync requirements/develop.txt
 	$(VENV_DIR)/bin/pip install -e .
 	touch $@
 
 $(VENV_DIR):
 	python3 -m venv $@
-	$(VENV_DIR)/bin/pip install -U pip~=$(PIP_VERSION)
+	$(VENV_DIR)/bin/pip install -r requirements/develop.txt
 	ln -sf $(VENV_DIR) .venv
 
 .PHONY: venv
@@ -45,6 +44,16 @@ flake8: venv
 docs: venv
 	. $(VENV_DIR)/bin/activate; $(MAKE) -C docs html
 	xdg-open docs/_build/html/index.html
+
+.PHONY: build
+build: venv
+	$(VENV_DIR)/bin/python -m build .
+
+.PHONY: twine_upload
+twine_upload: clean build
+	python3 -m venv $(VENV_DIR)/twine_venv
+	$(VENV_DIR)/twine_venv/bin/python -m pip install twine==4.0.2
+	$(VENV_DIR)/twine_venv/bin/twine upload dist/*
 
 .PHONY: clean
 .NOTPARALLEL: clean
