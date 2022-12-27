@@ -9,12 +9,6 @@ pyfatfs allows interaction with FAT12/16/32 filesystems, either via
 or direct interaction with the filesystem for low-level access.
 """
 
-__name__ = 'pyfatfs'
-__author__ = 'Nathan-J. Hirschauer'
-__author_email__ = 'nathanhi@deepserve.info'
-__license__ = 'MIT License'
-
-
 #: Specifies default ("OEM") encoding
 from pyfatfs._exceptions import PyFATException
 

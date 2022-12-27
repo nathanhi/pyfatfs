@@ -1,7 +1,0 @@
-flake8>=3.9.0,<4.0.0
-flake8-docstrings>=1.6.0,<2.0.0
-pip-tools>=6.4.0,<7.0.0
-sphinx>=3.5.0,<4.0.0
-twine>=3.4.0,<4.0.0
-setuptools_scm>=6.0.0,<7.0.0
-wheel>=0.36.0,<1.0.0
