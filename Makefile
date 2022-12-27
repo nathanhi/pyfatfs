@@ -1,20 +1,26 @@
 PYTHON_VERSION=$(shell python3 -c "import platform; print('.'.join(platform.python_version_tuple()[:-1]))")
 VENV_DIR=.venv_$(PYTHON_VERSION)
-PIP_VERSION=22.3
 
 ifeq ($(PYTHON_VERSION),)
 	$(error No Python 3 interpreter found!)
 endif
 
+ifeq ($(OS),Windows_NT)
+	VENV_BIN_DIR=scripts
+else
+	VENV_BIN_DIR=bin
+endif
+
 # Generate virtualenv
 $(VENV_DIR)/install.indicator: pyproject.toml requirements/develop.txt
-	$(VENV_DIR)/bin/python -m piptools sync requirements/develop.txt
-	$(VENV_DIR)/bin/pip install -e .
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m piptools sync requirements/develop.txt
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -r requirements/develop.txt
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -e .
 	touch $@
 
 $(VENV_DIR):
 	python3 -m venv $@
-	$(VENV_DIR)/bin/pip install -r requirements/develop.txt
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m pip install -r requirements/develop.txt
 	ln -sf $(VENV_DIR) .venv
 
 .PHONY: venv
@@ -25,35 +31,43 @@ pyproject.toml: $(VENV_DIR)
 # Generate requirements
 requirements/%.txt: pyproject.toml
 	mkdir requirements; touch $@
-	$(VENV_DIR)/bin/python -m piptools compile --extra $(basename $(notdir $@)) --output-file $@ $<
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m piptools compile --extra $(basename $(notdir $@)) --output-file $@ $<
 
 .PHONY: requirements
 requirements: $(VENV_DIR) requirements/develop.txt
 
 .coverage: venv
-	$(VENV_DIR)/bin/py.test --cov=pyfatfs tests
+	$(VENV_DIR)/$(VENV_BIN_DIR)/py.test --cov=pyfatfs tests
 
 .PHONY: tests
 tests: venv .coverage
 
 .PHONY: flake8
 flake8: venv
-	$(VENV_DIR)/bin/flake8 pyfatfs tests --count --show-source --statistics
+	$(VENV_DIR)/$(VENV_BIN_DIR)/flake8 pyfatfs tests --count --show-source --statistics
 
 .PHONY: docs
 docs: venv
-	. $(VENV_DIR)/bin/activate; $(MAKE) -C docs html
+	. $(VENV_DIR)/$(VENV_BIN_DIR)/activate; $(MAKE) -C docs html
 	xdg-open docs/_build/html/index.html
 
 .PHONY: build
 build: venv
-	$(VENV_DIR)/bin/python -m build .
+	$(VENV_DIR)/$(VENV_BIN_DIR)/python3 -m build .
 
 .PHONY: twine_upload
 twine_upload: clean build
 	python3 -m venv $(VENV_DIR)/twine_venv
-	$(VENV_DIR)/twine_venv/bin/python -m pip install twine==4.0.2
-	$(VENV_DIR)/twine_venv/bin/twine upload dist/*
+	$(VENV_DIR)/twine_venv/$(VENV_BIN_DIR)/python3 -m pip install twine==4.0.2
+	$(VENV_DIR)/twine_venv/$(VENV_BIN_DIR)/twine upload dist/*
+
+.PHONY: coveralls_parallel
+coveralls_parallel: venv
+	$(VENV_DIR)/$(VENV_BIN_DIR)/coveralls --service=github
+
+.PHONY: coveralls_finish
+coveralls_finish: venv
+	$(VENV_DIR)/$(VENV_BIN_DIR)/coveralls --service=github --finish
 
 .PHONY: clean
 .NOTPARALLEL: clean

@@ -14,6 +14,12 @@ jobs:
       matrix:
         os: [ubuntu-20.04, macos-latest, windows-latest]
         python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        # https://bugs.python.org/issue43749
+        exclude:
+        - os: windows-latest
+          python-version: 3.7
+        - os: windows-latest
+          python-version: 3.8
 
     steps:
     - uses: actions/checkout@v2
@@ -37,7 +43,7 @@ jobs:
         COVERALLS_FLAG_NAME: ${{ matrix.python-version }}_${{ matrix.os }}
         COVERALLS_PARALLEL: true
       run: |
-        coveralls --service=github
+        make coveralls_parallel
 
   finish:
     needs: test
@@ -56,4 +62,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          coveralls --service=github --finish
+          make coveralls_finish
