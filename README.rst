@@ -1,4 +1,4 @@
-.. image:: https://img.shields.io/github/workflow/status/nathanhi/pyfatfs/test?style=flat-square
+.. image:: https://img.shields.io/github/actions/workflow/status/nathanhi/pyfatfs/test.yml?style=flat-square
     :target: https://github.com/nathanhi/pyfatfs/actions/workflows/test.yml
     :alt: CI build status
 .. image:: https://img.shields.io/readthedocs/pyfatfs?style=flat-square
