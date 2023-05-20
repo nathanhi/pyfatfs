@@ -53,6 +53,9 @@ development = [
 
 [tool.setuptools_scm]
 
+[tool.setuptools]
+packages = ["pyfatfs"]
+
 [tool.setuptools.dynamic]
 readme = {file = ["README.rst"]}
 dependencies = {file = ["requirements/install.txt"]}

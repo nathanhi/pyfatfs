@@ -110,6 +110,10 @@ class FATDirectoryEntry:
         self.__dirs = []
         self.__encoding = encoding
 
+    @property
+    def _encoding(self):
+        return self.__encoding
+
     @staticmethod
     def new(name: EightDotThree, tz: timezone, encoding: str,
             attr: int = 0, ntres: int = 0, cluster: int = 0,

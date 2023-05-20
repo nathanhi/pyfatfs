@@ -4,6 +4,7 @@
 
 import errno
 import os
+import struct
 
 from pyfatfs import FAT_OEM_ENCODING, _init_check
 from pyfatfs._exceptions import PyFATException, NotAFatEntryException
@@ -125,8 +126,10 @@ class EightDotThree:
         :raises: `ValueError` if the given string contains invalid
                  8.3 filename characters.
         """
+        name = name.encode(encoding)
+        name = list(struct.unpack(f"{len(name)}c", name))
         for c in name:
-            if c.encode(encoding) in EightDotThree.INVALID_CHARACTERS:
+            if ord(c) in EightDotThree.INVALID_CHARACTERS:
                 raise ValueError(f"Invalid characters in string '{name}', "
                                  f"cannot be used as part of an 8.3 "
                                  f"conform file name.")
@@ -194,30 +197,38 @@ class EightDotThree:
 
         extsep = "."
 
-        def map_chars(char: chr) -> chr:
+        def map_chars(name: bytes) -> bytes:
             """Map 8DOT3 valid characters.
 
-            :param char: `str`: input character
+            :param name: `str`: input name
             :returns: `str`: mapped output character
             """
-            char = char.upper()
-            if char == ' ':
-                return ''
-            if char in EightDotThree.INVALID_CHARACTERS:
-                return '_'
-            return char
+            _name: bytes = b''
+            for b in struct.unpack(f"{len(name)}c", name):
+                if b == b' ':
+                    _name += b''
+                elif ord(b) in EightDotThree.INVALID_CHARACTERS:
+                    _name += b'_'
+                else:
+                    _name += b
+            return _name
 
+        dir_name = dir_name.upper()
         try:
             # Shorten to 8 chars; strip invalid characters
             basename = os.path.splitext(dir_name)[0][0:8].strip()
-            basename = ''.join(map(map_chars, basename))
+            basename = basename.encode(parent_dir_entry._encoding,
+                                       errors="replace")
+            basename = map_chars(basename).decode(parent_dir_entry._encoding)
         except IndexError:
             basename = ""
 
         try:
             # Shorten to 3 chars; strip invalid characters
             extname = os.path.splitext(dir_name)[1][1:4].strip()
-            extname = ''.join(map(map_chars, extname))
+            extname = extname.encode(parent_dir_entry._encoding,
+                                     errors="replace")
+            extname = map_chars(extname).decode(parent_dir_entry._encoding)
         except IndexError:
             extname = ""
 

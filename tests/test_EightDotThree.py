@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+import pyfatfs
 from pyfatfs.EightDotThree import EightDotThree
 
 
@@ -97,6 +98,7 @@ def test_checksum_calculation_referenceimpl_random():
 def test_make_8dot3_name():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
+    fde._encoding = "ASCII"
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     n = sfn.make_8dot3_name("This is a long filename.txt", fde)
@@ -105,9 +107,35 @@ def test_make_8dot3_name():
     assert sfn.is_8dot3_conform(sfn.get_unpadded_filename())
 
 
+def test_set_str_name_nonconform():
+    """Test that set_str_name detects nonconforming names."""
+    sfn = EightDotThree()
+    sfn.set_str_name("FOO")
+    with pytest.raises(pyfatfs.PyFATException):
+        sfn.set_str_name("foo")
+
+
+def test_is_8dot3_conform_invchars():
+    """Check that invalid characters are correctly handled."""
+    sfn = EightDotThree()
+    assert sfn.is_8dot3_conform('"TEST"', 'ASCII') is False
+
+
+def test_is_8dot3_conform_length():
+    """Check that 8dot3 length limits are properly verified."""
+    sfn = EightDotThree()
+    assert sfn.is_8dot3_conform("TESTTEST.EXE") is True
+    assert sfn.is_8dot3_conform("TESTTEST.EX") is True
+    assert sfn.is_8dot3_conform("TESTTESTT.EX") is False
+    assert sfn.is_8dot3_conform("TESTTES.EXEE") is False
+    assert sfn.is_8dot3_conform("TESTTESTT.EXE") is False
+    assert sfn.is_8dot3_conform("TESTTEST.EXEE") is False
+
+
 def test_make_8dot3_name_cut_ext():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
+    fde._encoding = "ASCII"
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename.TeXT", fde)
@@ -115,9 +143,20 @@ def test_make_8dot3_name_cut_ext():
     assert sfn.is_8dot3_conform(lfn)
 
 
+def test_make_8dot3_name_invchars():
+    """Verify that invalid characters are mapped to _."""
+    fde = mock.MagicMock()
+    fde._encoding = "ASCII"
+    fde.get_entries.return_value = ([], [], [])
+    sfn = EightDotThree()
+    assert sfn.make_8dot3_name('"TEST".EXE', fde) == '_TEST_.EXE'
+    assert sfn.make_8dot3_name('🐈.TXT', fde) == '_.TXT'
+
+
 def test_make_8dot3_name_noext():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
+    fde._encoding = "ASCII"
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename", fde)
@@ -128,6 +167,7 @@ def test_make_8dot3_name_noext():
 def test_make_8dot3_name_emptyext():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
+    fde._encoding = "ASCII"
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree()
     lfn = sfn.make_8dot3_name("This is a long filename.", fde)
@@ -138,6 +178,7 @@ def test_make_8dot3_name_emptyext():
 def test_make_8dot3_name_unicode():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
+    fde._encoding = "UTF-8"
     fde.get_entries.return_value = ([], [], [])
     sfn = EightDotThree(encoding='UTF-8')
     strname = sfn.make_8dot3_name("🤷.🤷", fde)
@@ -149,6 +190,7 @@ def test_make_8dot3_name_unicode():
 def test_make_8dot3_name_collision():
     """Test that make_8dot3_filename generates valid 8dot3 filenames."""
     fde = mock.MagicMock()
+    fde._encoding = "ASCII"
     fde_sub = mock.MagicMock()
     fde_sub.get_short_name.side_effect = ["THISIS.TXT", "THISIS~1.TXT",
                                           "THISIS~2.TXT"]
