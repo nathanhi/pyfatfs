@@ -88,9 +88,12 @@ pytest==6.2.5
     #   pyfatfs (pyproject.toml)
     #   pytest-cov
     #   pytest-mock
+    #   pytest-parallel
 pytest-cov==2.12.1
     # via pyfatfs (pyproject.toml)
 pytest-mock==3.10.0
+    # via pyfatfs (pyproject.toml)
+pytest-parallel==0.1.1
     # via pyfatfs (pyproject.toml)
 pytest-runner==5.3.2
     # via pyfatfs (pyproject.toml)

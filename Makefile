@@ -37,7 +37,7 @@ requirements/%.txt: pyproject.toml
 requirements: $(VENV_DIR) requirements/development.txt
 
 .coverage: venv
-	$(VENV_DIR)/$(VENV_BIN_DIR)/py.test --cov=pyfatfs tests
+	$(VENV_DIR)/$(VENV_BIN_DIR)/py.test --workers=auto --cov=pyfatfs tests
 
 .PHONY: tests
 tests: venv .coverage
