@@ -13,7 +13,7 @@ import time
 import warnings
 
 from contextlib import contextmanager
-from io import BufferedReader, FileIO, open, BytesIO, IOBase, SEEK_END
+from io import FileIO, open, BytesIO, IOBase, SEEK_END
 from os import PathLike
 from typing import Union
 
@@ -34,7 +34,8 @@ def _readonly_check(func):
             return func(*args, **kwargs)
         else:
             raise PyFATException("Filesystem has been opened read-only, not "
-                                 "able to perform a write operation!")
+                                 "able to perform a write operation!",
+                                 errno=errno.EROFS)
 
     return _wrapper
 
@@ -126,9 +127,10 @@ class PyFat(object):
         self.__lock = threading.Lock()
 
     def __set_fp(self, fp: Union[IOBase, BytesIO]):
-        if isinstance(self.__fp, BufferedReader):
+        if self.__fp is not None:
             raise PyFATException("Cannot overwrite existing file handle, "
-                                 "create new class instance of PyFAT.")
+                                 "create new class instance of PyFAT.",
+                                 errno=errno.EMFILE)
         self.__fp = fp
 
     def __seek(self, address: int):

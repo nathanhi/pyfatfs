@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 
 """Test PyFat core functionality."""
+import datetime
+import errno
 from io import BytesIO
 from unittest import mock
 
+import pyfatfs
+import pytest
+
+from pyfatfs import PyFATException
 from pyfatfs.FATDirectoryEntry import FATDirectoryEntry
 from pyfatfs.PyFat import PyFat
 
@@ -26,6 +32,64 @@ def test_set_fp_bytesio():
     pf2.set_fp(BytesIO(in_memory_fs.read()))
     assert isinstance(pf2.root_dir, FATDirectoryEntry)
     assert pf2.bpb_header["BS_VolLab"] == b'FOOBARBAZ  '
+
+
+def test_set_fp_twice():
+    """Test that set_fp cannot be called twice per instance."""
+    pf = PyFat(encoding='UTF-8')
+    in_memory_fs = BytesIO(b'\0' * 4 * 1024 * 1024)
+    pf._PyFat__fp = in_memory_fs
+    with mock.patch('pyfatfs.PyFat.PyFat._PyFat__set_fp',
+                    mock.Mock()):
+        with mock.patch('pyfatfs.PyFat.open'):
+            pf.mkfs("/this/does/not/exist.img",
+                    fat_type=PyFat.FAT_TYPE_FAT12,
+                    label="FOOBARBAZ",
+                    size=1024 * 1024 * 4)
+
+    in_memory_fs.seek(0)
+    with pytest.raises(PyFATException) as e:
+        pf.set_fp(BytesIO(in_memory_fs.read()))
+    assert e.value.errno == errno.EMFILE
+
+
+def test_set_fp_unreadable():
+    """Test that files marked as unreadable cannot be opened."""
+    pf = PyFat()
+    fp = mock.Mock()
+    fp.readable.return_value = False
+    with pytest.raises(PyFATException) as e:
+        pf.set_fp(fp)
+    assert e.value.errno == errno.EACCES
+
+
+def test_set_fp_unseekable():
+    """Test that files marked as unseekable cannot be opened."""
+    pf = PyFat()
+    fp = mock.Mock()
+    fp.readable.return_value = True
+    fp.seekable.return_value = False
+    with pytest.raises(PyFATException) as e:
+        pf.set_fp(fp)
+    assert e.value.errno == errno.EINVAL
+
+
+def test_open_mode_readonly():
+    """Verify rb mode if readonly on open()."""
+    pf = PyFat()
+    with mock.patch('pyfatfs.PyFat.PyFat.set_fp'):
+        with mock.patch('pyfatfs.PyFat.open') as mock_open:
+            pf.open("foo", read_only=True)
+    mock_open.assert_called_once_with("foo", mode="rb")
+
+
+def test_open_mode_readwrite():
+    """Verify rb+ mode if readonly=False on open()."""
+    pf = PyFat()
+    with mock.patch('pyfatfs.PyFat.PyFat.set_fp'):
+        with mock.patch('pyfatfs.PyFat.open') as mock_open:
+            pf.open("foo", read_only=False)
+    mock_open.assert_called_once_with("foo", mode="rb+")
 
 
 def test_is_dirty_fat12_not_dirty():
@@ -239,3 +303,56 @@ def test_mkfs_no_size():
             pf.flush_fat()
 
     in_memory_fs.seek(0)
+
+
+def test_allocate_bytes_readonly():
+    """Test that allocate_bytes cannot be called on read-only FS."""
+    pf = PyFat()
+    pf.initialized = True
+    pf.is_read_only = True
+    with pytest.raises(PyFATException) as e:
+        pf.allocate_bytes(0)
+    assert e.value.errno == errno.EROFS
+
+
+def test_flush_fat_readonly():
+    """Test that flush_fat cannot be called on read-only FS."""
+    pf = PyFat()
+    pf.initialized = True
+    pf.is_read_only = True
+    with pytest.raises(PyFATException) as e:
+        pf.flush_fat()
+    assert e.value.errno == errno.EROFS
+
+
+def test_free_cluster_chain_readonly():
+    """Test that free_cluster_chain cannot be called on read-only FS."""
+    pf = PyFat()
+    pf.initialized = True
+    pf.is_read_only = True
+    with pytest.raises(PyFATException) as e:
+        pf.free_cluster_chain(4711)
+    assert e.value.errno == errno.EROFS
+
+
+def test_update_directory_entry_readonly():
+    """Test that update_directory_entry cannot be called on read-only FS."""
+    pf = PyFat()
+    pf.initialized = True
+    pf.is_read_only = True
+    dentry = FATDirectoryEntry.new(name="foo",
+                                   tz=datetime.timezone.utc,
+                                   encoding=pyfatfs.FAT_OEM_ENCODING)
+    with pytest.raises(PyFATException) as e:
+        pf.update_directory_entry(dentry)
+    assert e.value.errno == errno.EROFS
+
+
+def test_write_data_to_cluster_readonly():
+    """Test that write_data_to_cluster cannot be called on read-only FS."""
+    pf = PyFat()
+    pf.initialized = True
+    pf.is_read_only = True
+    with pytest.raises(PyFATException) as e:
+        pf.write_data_to_cluster(b'foo', 4711)
+    assert e.value.errno == errno.EROFS
