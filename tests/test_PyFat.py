@@ -305,6 +305,18 @@ def test_mkfs_no_size():
     in_memory_fs.seek(0)
 
 
+def test_get_fs_location():
+    """Verify that the file pointer is properly queried for location."""
+    pf = PyFat()
+    pf._PyFat__fp = mock.Mock()
+    pf._PyFat__fp.name = "/foo"
+    pf.initialized = True
+    assert pf.get_fs_location() == "/foo"
+    pf.initialized = False
+    with pytest.raises(PyFATException):
+        pf.get_fs_location()
+
+
 def test_allocate_bytes_readonly():
     """Test that allocate_bytes cannot be called on read-only FS."""
     pf = PyFat()

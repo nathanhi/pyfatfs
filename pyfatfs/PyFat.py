@@ -268,7 +268,6 @@ class PyFat(object):
         """Retrieve path of opened filesystem."""
         return self.__fp.name
 
-    @_init_check
     def _get_total_sectors(self):
         """Get total number of sectors for all FAT sizes."""
         if self.bpb_header["BPB_TotSec16"] != 0:
@@ -862,11 +861,7 @@ class PyFat(object):
         returns: `str`: Any of PyFat.FAT_TYPE_FAT12, PyFat.FAT_TYPE_FAT16
                  or PyFat.FAT_TYPE_FAT32
         """
-        if self.bpb_header["BPB_TotSec16"] != 0:
-            total_sectors = self.bpb_header["BPB_TotSec16"]
-        else:
-            total_sectors = self.bpb_header["BPB_TotSec32"]
-
+        total_sectors = self._get_total_sectors()
         rsvd_sectors = self.bpb_header["BPB_RsvdSecCnt"]
         fat_sz = self.bpb_header["BPB_NumFATs"] * self._fat_size
         root_dir_sectors = self.root_dir_sectors
