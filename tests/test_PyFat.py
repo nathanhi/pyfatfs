@@ -305,6 +305,36 @@ def test_mkfs_no_size():
     in_memory_fs.seek(0)
 
 
+def test___seek_no_fp():
+    """Make sure __seek() without a file handle is not possible."""
+    pf = PyFat()
+    with pytest.raises(PyFATException) as e:
+        pf._PyFat__seek(1234)
+    assert e.value.errno == errno.ENXIO
+
+
+def test__get_fat_size_count_fat1216():
+    """Verify the correct FATSz is returned on FAT12/16."""
+    pf = PyFat()
+    pf.bpb_header = {}
+    pf.bpb_header["BPB_FATSz16"] = 1234
+    assert pf._get_fat_size_count() == 1234
+    pf.bpb_header["BPB_FATSz32"] = 5678
+    assert pf._get_fat_size_count() == 1234
+
+
+def test__get_fat_size_count_fat32():
+    """Verify the correct FATSz is returned on FAT32."""
+    pf = PyFat()
+    pf.bpb_header = {}
+    pf.bpb_header["BPB_FATSz16"] = 0
+    pf.bpb_header["BPB_FATSz32"] = 42
+    assert pf._get_fat_size_count() == 42
+    del pf.bpb_header["BPB_FATSz32"]
+    with pytest.raises(PyFATException):
+        pf._get_fat_size_count()
+
+
 def test_get_fs_location():
     """Verify that the file pointer is properly queried for location."""
     pf = PyFat()
