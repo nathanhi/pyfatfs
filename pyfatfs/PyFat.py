@@ -1096,7 +1096,9 @@ class PyFat(object):
                 (4194304, 64)   # disks up to   2   GB, 32k cluster
             ],
             PyFat.FAT_TYPE_FAT12: [
-                (32768, 64)
+                (4084, 1),      # disks up to   2   MB, .5k cluster
+                (8168, 2),      # disks up to   4   MB,  1k cluster
+                (16336, 4)      # disks up to   8   MB,  2k cluster
             ]
         }
         sec_per_clus = 0
@@ -1134,7 +1136,10 @@ class PyFat(object):
         elif fat_type == PyFat.FAT_TYPE_FAT16:
             root_ent_cnt = 512
         else:
-            root_ent_cnt = 224  # randomly picked, fine if sector_size is 512
+            if sector_size == 512:
+                root_ent_cnt = 224  # Floppy typical
+            else:
+                root_ent_cnt = 512
 
         rsvd_sec_cnt = 32 if fat_type == PyFat.FAT_TYPE_FAT32 else 1
 
