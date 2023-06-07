@@ -1098,7 +1098,8 @@ class PyFat(object):
             PyFat.FAT_TYPE_FAT12: [
                 (4084, 1),      # disks up to   2   MB, .5k cluster
                 (8168, 2),      # disks up to   4   MB,  1k cluster
-                (16336, 4)      # disks up to   8   MB,  2k cluster
+                (16336, 4),     # disks up to   8   MB,  2k cluster
+                (32672, 8)      # disks up to  16   MB,  4k cluster
             ]
         }
         sec_per_clus = 0
