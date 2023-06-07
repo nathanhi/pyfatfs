@@ -9,6 +9,10 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Unreleased_
 -----------
 
+Added
+~~~~~
+* (mkfs) `PR #30 <https://github.com/nathanhi/pyfatfs/pull/30>`_: Add support for different FAT12 cluster sizes for filesystems up to 256MB by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
+
 Changed
 ~~~~~~~
 
