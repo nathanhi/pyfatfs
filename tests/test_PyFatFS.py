@@ -16,7 +16,7 @@ from pyfatfs.PyFatFS import PyFatBytesIOFS
 def _make_fs(fat_type: int, **kwargs) -> (PyFatBytesIOFS, BytesIO):
     """Format new in-memory FS for testing."""
     pf = PyFat()
-    part_sz = 1024 * 1024 * (4 if fat_type == PyFat.FAT_TYPE_FAT12
+    part_sz = 1024 * 1024 * (15 if fat_type == PyFat.FAT_TYPE_FAT12
                              else 33)
     in_memory_fs = BytesIO(b'\0' * part_sz)
     pf._PyFat__fp = in_memory_fs
