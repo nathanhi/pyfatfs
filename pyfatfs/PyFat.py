@@ -1099,7 +1099,11 @@ class PyFat(object):
                 (4084, 1),      # disks up to   2   MB, .5k cluster
                 (8168, 2),      # disks up to   4   MB,  1k cluster
                 (16336, 4),     # disks up to   8   MB,  2k cluster
-                (32672, 8)      # disks up to  16   MB,  4k cluster
+                (32672, 8),     # disks up to  16   MB,  4k cluster
+                (65344, 16),    # disks up to  32   MB,  8k cluster
+                (130688, 32),   # disks up to  64   MB, 16k cluster
+                (261376, 64),   # disks up to 128   MB, 32k cluster
+                (522752, 128)   # disks up to 256   MB, 64k cluster
             ]
         }
         sec_per_clus = 0
