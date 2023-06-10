@@ -761,7 +761,9 @@ class PyFat(object):
             if not self.lazy_load:
                 if dir_entry.is_directory() and not dir_entry.is_special():
                     # Iterate all subdirectories except for dot and dotdot
-                    for d in dir_entry.get_entries()[0]:
+                    cluster = dir_entry.get_cluster()
+                    subdirs = self.parse_dir_entries_in_cluster_chain(cluster)
+                    for d in subdirs:
                         dir_entry.add_subdirectory(d)
 
             # Reset temporary LFN entry

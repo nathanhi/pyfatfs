@@ -59,11 +59,18 @@ class TestPyFatFS16(FSTestCases, TestCase):
             fs1.touch(os.path.join(d, "This requires an LFN entry.TxT"))
             fs1.touch(os.path.join(d, "FILE2.TXT"))
 
-        dentries = list(fs1.walk("/"))
+        dentries_fs1_initial = list(fs1.walk("/"))
+        fs1.fs.flush_fat()
+        in_memory_fs.seek(0)
+        in_memory_fs = BytesIO(in_memory_fs.read())
+        fs1 = PyFatBytesIOFS(in_memory_fs, encoding='UTF-8', lazy_load=False)
+        dentries_fs1_reopen = list(fs1.walk("/"))
+        assert dentries_fs1_initial == dentries_fs1_reopen
+
         in_memory_fs.seek(0)
         fs2 = PyFatBytesIOFS(BytesIO(in_memory_fs.read()),
                              encoding='UTF-8', lazy_load=True)
-        assert dentries == list(fs2.walk("/"))
+        assert dentries_fs1_reopen == list(fs2.walk("/"))
         fs1.close()
         fs2.close()
 
