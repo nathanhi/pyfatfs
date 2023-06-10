@@ -21,6 +21,7 @@ Changed
 * Discard unknown PyFilesystem2 opener arguments, do not pass through to underlying PyFatFS constructor
 * Lazy load directory entries for performance and `regex2fat <https://github.com/8051Enthusiast/regex2fat>`_ compatibility
    - Introduce ``lazy_load`` parameter to allow restoring previous behavior
+   - `PR #32 <https://github.com/nathanhi/pyfatfs/pull/32>`_: Fix tree iteration on non-lazy load by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
 
 1.0.5_ - 2022-04-16
 -------------------
