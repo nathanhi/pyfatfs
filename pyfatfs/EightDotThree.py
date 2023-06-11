@@ -214,23 +214,17 @@ class EightDotThree:
             return _name
 
         dir_name = dir_name.upper()
-        try:
-            # Shorten to 8 chars; strip invalid characters
-            basename = os.path.splitext(dir_name)[0][0:8].strip()
-            basename = basename.encode(parent_dir_entry._encoding,
-                                       errors="replace")
-            basename = map_chars(basename).decode(parent_dir_entry._encoding)
-        except IndexError:
-            basename = ""
+        # Shorten to 8 chars; strip invalid characters
+        basename = os.path.splitext(dir_name)[0][0:8].strip()
+        basename = basename.encode(parent_dir_entry._encoding,
+                                   errors="replace")
+        basename = map_chars(basename).decode(parent_dir_entry._encoding)
 
-        try:
-            # Shorten to 3 chars; strip invalid characters
-            extname = os.path.splitext(dir_name)[1][1:4].strip()
-            extname = extname.encode(parent_dir_entry._encoding,
-                                     errors="replace")
-            extname = map_chars(extname).decode(parent_dir_entry._encoding)
-        except IndexError:
-            extname = ""
+        # Shorten to 3 chars; strip invalid characters
+        extname = os.path.splitext(dir_name)[1][1:4].strip()
+        extname = extname.encode(parent_dir_entry._encoding,
+                                 errors="replace")
+        extname = map_chars(extname).decode(parent_dir_entry._encoding)
 
         if len(extname) == 0:
             extsep = ""
