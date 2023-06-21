@@ -55,6 +55,28 @@ class TestPyFatFS16(FSTestCases, TestCase, PyFsCompatLayer):
         """Create filesystem for PyFilesystem2 integration tests."""
         return _make_fs(self.FAT_TYPE)[0]
 
+    def test_lazy_load_dentry_parent_update(self):
+        """#33: Verify parent dentry is properly set on lazy-load."""
+        fs, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=True)
+        fs.makedirs("/foo")
+        fs.touch("/foo/bar")
+        foo_dentry = fs.fs.root_dir.get_entry("foo")
+        foobar_dentry = fs.fs.root_dir.get_entry("foo/bar")
+        assert foo_dentry._parent == fs.fs.root_dir
+        assert foobar_dentry._parent == foo_dentry
+        assert foo_dentry.get_full_path() == "foo"
+        assert foobar_dentry.get_full_path() == "foo/bar"
+
+        in_memory_fs.seek(0)
+        fs = PyFatBytesIOFS(BytesIO(in_memory_fs.read()),
+                            encoding='UTF-8', lazy_load=True)
+        foo_dentry = fs.fs.root_dir.get_entry("foo")
+        foobar_dentry = fs.fs.root_dir.get_entry("foo/bar")
+        assert foo_dentry._parent == fs.fs.root_dir
+        assert foobar_dentry._parent == foo_dentry
+        assert foo_dentry.get_full_path() == "foo"
+        assert foobar_dentry.get_full_path() == "foo/bar"
+
     def test_lazy_vs_nonlazy_tree(self):
         """Compare directory tree between lazy and non-lazy loading."""
         fs1, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=False)
