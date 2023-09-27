@@ -47,4 +47,8 @@ class DosDateTime(datetime):
         second = (tm & (1 << 5) - 1) * 2
         minute = (tm >> 5) & ((1 << 6) - 1)
         hour = (tm >> 11) & ((1 << 5) - 1)
-        return time(hour, minute, second)
+
+        try:
+            return time(hour, minute, second)
+        except ValueError:
+            return time(0, 0, 0)

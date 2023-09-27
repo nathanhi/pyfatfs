@@ -14,6 +14,11 @@ Added
 * (mkfs) `PR #30 <https://github.com/nathanhi/pyfatfs/pull/30>`_: Add support for different FAT12 cluster sizes for filesystems up to 256MB by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
 * `PR #36 <https://github.com/nathanhi/pyfatfs/pull/36>`_: Add Python 3.12 support by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
 
+Fixed
+~~~~~
+
+* `#34 <https://github.com/nathanhi/pyfatfs/issues/34>`_ (DosDateTime) `PR #35 <https://github.com/nathanhi/pyfatfs/pull/35>`_: Gracefully handle invalid file timestamps by `@beckerben <https://github.com/beckerben>`_
+
 Changed
 ~~~~~~~
 
