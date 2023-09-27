@@ -4,8 +4,6 @@
 
 from datetime import datetime, time
 
-import pytest
-
 from pyfatfs.DosDateTime import DosDateTime
 
 
@@ -93,9 +91,8 @@ def test_deserialize_max():
 
 
 def test_deserialize_exceed_max():
-    """Deserialize invalid time value."""
-    with pytest.raises(ValueError, match="second must be in 0..59"):
-        DosDateTime.deserialize_time(0xBF7E)
+    """Deserialize invalid time value to 00:00:00."""
+    assert DosDateTime.deserialize_time(0xBF7E) == time(0, 0, 0)
 
 
 def test_deserialize_minutes_high():
