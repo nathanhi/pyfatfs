@@ -69,7 +69,7 @@ packaging==22.0
     #   sphinx
 pep517==0.13.0
     # via build
-pip-tools==6.12.1
+pip-tools==7.3.0
     # via pyfatfs (pyproject.toml)
 pluggy==1.0.0
     # via pytest

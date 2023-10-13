@@ -12,6 +12,7 @@ Unreleased_
 Added
 ~~~~~
 * (mkfs) `PR #30 <https://github.com/nathanhi/pyfatfs/pull/30>`_: Add support for different FAT12 cluster sizes for filesystems up to 256MB by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
+* `PR #36 <https://github.com/nathanhi/pyfatfs/pull/36>`_: Add Python 3.12 support by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
 
 Changed
 ~~~~~~~
@@ -22,6 +23,11 @@ Changed
 * Lazy load directory entries for performance and `regex2fat <https://github.com/8051Enthusiast/regex2fat>`_ compatibility
    - Introduce ``lazy_load`` parameter to allow restoring previous behavior
    - `PR #32 <https://github.com/nathanhi/pyfatfs/pull/32>`_: Fix tree iteration on non-lazy load by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
+
+Removed
+~~~~~~~
+
+* `PR #36 <https://github.com/nathanhi/pyfatfs/pull/36>`_: Drop Python 3.7 support by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
 
 1.0.5_ - 2022-04-16
 -------------------
