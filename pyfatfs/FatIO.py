@@ -57,10 +57,10 @@ class FatIO(io.RawIOBase):
 
         ex: <FatFile fs=<PyFat object> path="/README.txt" mode="r">
         """
-        return f'<{self.__class__.__name__} ' \
-               f'fs={self.fs} ' \
-               f'path="{self.name}" ' \
-               f'mode="{self.mode}"'
+        return str(f'<{self.__class__.__name__} '
+                   f'fs={self.fs} '
+                   f'path="{self.name}" '
+                   f'mode="{self.mode}"')
 
     def seek(self, offset: int, whence: int = 0) -> int:
         """Seek to a given offset in the file.

@@ -36,7 +36,17 @@ def _make_fs(fat_type: int, **kwargs) -> (PyFatBytesIOFS, BytesIO):
             in_memory_fs)
 
 
-class TestPyFatFS16(FSTestCases, TestCase):
+class PyFsCompatLayer:
+    """PyFilesystem2 Python 3.12 compatibility layer.
+
+    Adds a workaround for PyFilesystem2#568:
+    https://github.com/PyFilesystem/pyfilesystem2/issues/568
+    """
+
+    assertRaisesRegexp = TestCase.assertRaisesRegex
+
+
+class TestPyFatFS16(FSTestCases, TestCase, PyFsCompatLayer):
     """Integration tests with PyFilesystem2 for FAT16."""
 
     FAT_TYPE = PyFat.FAT_TYPE_FAT16
@@ -107,13 +117,13 @@ class TestPyFatFS16(FSTestCases, TestCase):
         assert self.fs.readtext(fname) == '1' * 16
 
 
-class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase):
+class TestPyFatFS32(TestPyFatFS16, FSTestCases, TestCase, PyFsCompatLayer):
     """Integration tests with PyFilesystem2 for FAT32."""
 
     FAT_TYPE = PyFat.FAT_TYPE_FAT32
 
 
-class TestPyFatFS12(TestPyFatFS16, FSTestCases, TestCase):
+class TestPyFatFS12(TestPyFatFS16, FSTestCases, TestCase, PyFsCompatLayer):
     """Test specifics of FAT12 filesystem."""
 
     FAT_TYPE = PyFat.FAT_TYPE_FAT12
