@@ -75,7 +75,7 @@ class EightDotThree:
         :param name: `bytes`: Padded (must be 11 bytes) 8dot3 name
         """
         if not isinstance(name, bytes):
-            raise TypeError(f"Given parameter must be of type bytes,"
+            raise TypeError(f"Given parameter must be of type bytes, "
                             f"but got {type(name)} instead.")
 
         name = bytearray(name)
@@ -94,7 +94,7 @@ class EightDotThree:
     def set_str_name(self, name: str):
         """Set the name as string from user input (i.e. folder creation)."""
         if not isinstance(name, str):
-            raise TypeError(f"Given parameter must be of type str,"
+            raise TypeError(f"Given parameter must be of type str, "
                             f"but got {type(name)} instead.")
 
         if not self.is_8dot3_conform(name, self.encoding):
