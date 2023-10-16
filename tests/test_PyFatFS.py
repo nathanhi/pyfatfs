@@ -77,6 +77,26 @@ class TestPyFatFS16(FSTestCases, TestCase, PyFsCompatLayer):
         assert foo_dentry.get_full_path() == "foo"
         assert foobar_dentry.get_full_path() == "foo/bar"
 
+    def test_update_dentry_no_repopulate(self):
+        """#33: Verify that update_dentry doesn't re-read entries from disk.
+
+        This is only problematic in case of lazy-loading, where
+        directory entries can be dynamically loaded, even when there
+        is a pending directory entry change; ultimately overwriting
+        the pending change.
+        """
+        fs, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=True)
+        fs.makedirs("/foo")
+        fs.touch("/foo/bar")
+        assert fs.listdir("/foo") == ['bar']
+
+        in_memory_fs.seek(0)
+        fs = PyFatBytesIOFS(BytesIO(in_memory_fs.read()),
+                            encoding='UTF-8', lazy_load=True)
+        fs.touch("/foo/baz")
+        fs.remove("/foo/bar")
+        assert fs.listdir("/foo") == ['baz']
+
     def test_lazy_vs_nonlazy_tree(self):
         """Compare directory tree between lazy and non-lazy loading."""
         fs1, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=False)

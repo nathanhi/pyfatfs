@@ -378,6 +378,7 @@ class FATDirectoryEntry:
         self.__dirs = self.__fs.parse_dir_entries_in_cluster_chain(clus)
         for dir_entry in self.__dirs:
             dir_entry._add_parent(self)
+        self.__lazy_load = False
 
     def _get_entries_raw(self):
         """Get a full list of entries in current directory."""
@@ -497,8 +498,6 @@ class FATDirectoryEntry:
         **NOTE:** This will also remove special entries such
         as ».«, »..« and volume labels!
         """
-        self._verify_is_directory()
-        self.__populate_dirs()
         # Iterate all entries
         for dir_entry in self._get_entries_raw():
             sn = dir_entry.get_short_name()
