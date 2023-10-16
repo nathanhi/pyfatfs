@@ -29,6 +29,7 @@ Changed
    - Introduce ``lazy_load`` parameter to allow restoring previous behavior
    - `PR #32 <https://github.com/nathanhi/pyfatfs/pull/32>`_: Fix tree iteration on non-lazy load by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
    - `PR #33 <https://github.com/nathanhi/pyfatfs/pull/33>`_: Fix missing parent directory entry link on lazy-load by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
+   - `PR #33 <https://github.com/nathanhi/pyfatfs/pull/33>`_: Do not re-populate directory structure from disk on pending entry change by `@zurcher <https://github.com/zurcher>`_ / `@Microsoft <https://github.com/Microsoft>`_
 
 Removed
 ~~~~~~~
