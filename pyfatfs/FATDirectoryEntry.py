@@ -9,7 +9,7 @@ from time import timezone
 
 from pyfatfs.DosDateTime import DosDateTime
 from pyfatfs.EightDotThree import EightDotThree
-from pyfatfs._exceptions import PyFATException, NotAnLFNEntryException,\
+from pyfatfs._exceptions import PyFATException, NotAnLFNEntryException, \
     BrokenLFNEntryException
 from pyfatfs import FAT_OEM_ENCODING, FAT_LFN_ENCODING
 
@@ -239,9 +239,9 @@ class FATDirectoryEntry:
         :returns: Filesize or directory entry size in bytes as int
         """
         import warnings
-        warnings.warn(f"{self.__class__}.get_size is deprecated, "
-                      f"this method will be removed in PyFatFS 2.0; "
-                      f"please use the filesize property instead!",
+        warnings.warn(f"{self.__class__}.get_size is deprecated, this "
+                      f"method will be removed in PyFatFS 2.0; please "
+                      f"use the filesize property instead!",
                       DeprecationWarning)
         return self.filesize
 
@@ -251,9 +251,9 @@ class FATDirectoryEntry:
         :param size: `int`: File size in bytes
         """
         import warnings
-        warnings.warn(f"{self.__class__}.set_size is deprecated, "
-                      f"this method will be removed in PyFatFS 2.0; "
-                      f"please set the filesize property directly!",
+        warnings.warn(f"{self.__class__}.set_size is deprecated, this "
+                      f"method will be removed in PyFatFS 2.0; please "
+                      f"use the filesize property instead!",
                       DeprecationWarning)
         self.filesize = size
 

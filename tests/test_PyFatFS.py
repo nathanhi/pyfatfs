@@ -135,7 +135,8 @@ class TestPyFatFS16(FSTestCases, TestCase, PyFsCompatLayer):
             expected_dentries_root.append(f"{i}.txt")
         assert fs.listdir("/root").sort() == expected_dentries_root.sort()
         for i in range(0, 10):
-            assert fs.listdir(f"/root/{i}DIR").sort() == expected_dentries_sub.sort()
+            self.assertEqual(fs.listdir(f"/root/{i}DIR").sort(),
+                             expected_dentries_sub.sort())
 
     def test_lazy_load_dentry_parent_update(self):
         """#33: Verify parent dentry is properly set on lazy-load."""
