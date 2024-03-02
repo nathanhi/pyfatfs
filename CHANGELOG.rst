@@ -19,6 +19,7 @@ Fixed
 
 * `#34 <https://github.com/nathanhi/pyfatfs/issues/34>`_ (DosDateTime) `PR #35 <https://github.com/nathanhi/pyfatfs/pull/35>`_: Gracefully handle invalid file timestamps by `@beckerben <https://github.com/beckerben>`_
 * `#31 <https://github.com/nathanhi/pyfatfs/issues/31>`_ (FATDirectoryEntry): Handle file sizes larger than 4GB gracefully by responding with ``PyFATException`` and ``errno=E2BIG``
+* Properly lock I/O on write operations to avoid issues on concurrent writes
 
 Changed
 ~~~~~~~

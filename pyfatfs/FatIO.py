@@ -29,7 +29,6 @@ class FatIO(io.RawIOBase):
         self.mode = mode
         self.fs = fs
         self.name = str(path)
-        # TODO: File locking
         self._lock = threading.Lock()
 
         self.dir_entry = self.fs.root_dir.get_entry(path)
@@ -129,37 +128,38 @@ class FatIO(io.RawIOBase):
         if not self.mode.reading:
             raise IOError("File not open for reading")
 
-        # Set size boundary
-        if size + self.__bpos > self.dir_entry.filesize or size < 0:
-            size = self.dir_entry.filesize - self.__bpos
+        with self._lock:
+            # Set size boundary
+            if size + self.__bpos > self.dir_entry.filesize or size < 0:
+                size = self.dir_entry.filesize - self.__bpos
 
-        if size == 0:
-            return b""
+            if size == 0:
+                return b""
 
-        chunks = []
-        read_bytes = 0
-        cluster_offset = self.__coffpos
-        for c in self.fs.get_cluster_chain(self.__cpos):
-            chunk_size = self.fs.bytes_per_cluster - cluster_offset
-            # Do not read past EOF
-            if read_bytes + chunk_size > size:
-                chunk_size = size - read_bytes
+            chunks = []
+            read_bytes = 0
+            cluster_offset = self.__coffpos
+            for c in self.fs.get_cluster_chain(self.__cpos):
+                chunk_size = self.fs.bytes_per_cluster - cluster_offset
+                # Do not read past EOF
+                if read_bytes + chunk_size > size:
+                    chunk_size = size - read_bytes
 
-            chunk = self.fs.read_cluster_contents(c)
-            chunk = chunk[cluster_offset:][:chunk_size]
-            cluster_offset = 0
-            chunks.append(chunk)
-            read_bytes += chunk_size
-            if read_bytes == size:
-                break
+                chunk = self.fs.read_cluster_contents(c)
+                chunk = chunk[cluster_offset:][:chunk_size]
+                cluster_offset = 0
+                chunks.append(chunk)
+                read_bytes += chunk_size
+                if read_bytes == size:
+                    break
 
-        self.seek(read_bytes, 1)
+            self.seek(read_bytes, 1)
 
-        chunks = b"".join(chunks)
-        if len(chunks) != size:
-            raise RuntimeError("Read a different amount of data "
-                               "than was requested.")
-        return chunks
+            chunks = b"".join(chunks)
+            if len(chunks) != size:
+                raise RuntimeError("Read a different amount of data "
+                                   "than was requested.")
+            return chunks
 
     def readinto(self, __buffer: bytearray) -> Optional[int]:
         """Read data "directly" into bytearray."""
@@ -175,6 +175,11 @@ class FatIO(io.RawIOBase):
         return False
 
     def write(self, __b: Union[bytes, bytearray]) -> Optional[int]:
+        """Write given bytes to file."""
+        with self._lock:
+            return self.__write(__b)
+
+    def __write(self, __b: Union[bytes, bytearray]) -> Optional[int]:
         """Write given bytes to file."""
         if not self.writable():
             raise IOError('Cannot write to read-only file!')
@@ -212,31 +217,33 @@ class FatIO(io.RawIOBase):
         :param size: `int`: Size to truncate to, defaults to 0.
         :returns: `int`: Truncated size
         """
-        cur_pos = self.tell()
-        size = size if size is not None else cur_pos
-        if size > self.dir_entry.MAX_FILE_SIZE:
-            raise PyFATException(f"Unable to truncate file to {size} bytes "
-                                 f"as it would exceed FAT file size "
-                                 f"limitations.",
-                                 errno=errno.E2BIG)
+        with self._lock:
+            cur_pos = self.tell()
+            size = size if size is not None else cur_pos
+            if size > self.dir_entry.MAX_FILE_SIZE:
+                raise PyFATException(f"Unable to truncate file to {size} "
+                                     f"bytes as it would exceed FAT file "
+                                     f"size limitations.",
+                                     errno=errno.E2BIG)
 
-        if size > self.dir_entry.get_size():
-            self.seek(0, 2)
-            self.write(b'\0' * (size - self.dir_entry.get_size()))
-            self.seek(cur_pos)
-        elif size < self.dir_entry.get_size():
-            # Always keep at least one cluster allocated
-            num_clusters = max(1, self.fs.calc_num_clusters(size))
-            i = 0
-            for c in self.fs.get_cluster_chain(self.dir_entry.get_cluster()):
-                i += 1
-                if i <= num_clusters:
-                    continue
-                self.fs.free_cluster_chain(c)
-                self.fs.flush_fat()
-                break
+            if size > self.dir_entry.get_size():
+                self.seek(0, 2)
+                self.__write(b'\0' * (size - self.dir_entry.get_size()))
+                self.seek(cur_pos)
+            elif size < self.dir_entry.get_size():
+                # Always keep at least one cluster allocated
+                num_clusters = max(1, self.fs.calc_num_clusters(size))
+                i = 0
+                for c in self.fs.get_cluster_chain(
+                        self.dir_entry.get_cluster()):
+                    i += 1
+                    if i <= num_clusters:
+                        continue
+                    self.fs.free_cluster_chain(c)
+                    self.fs.flush_fat()
+                    break
 
-        # Update file size
-        self.dir_entry.filesize = size
-        self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
-        return size
+            # Update file size
+            self.dir_entry.filesize = size
+            self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
+            return size

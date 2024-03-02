@@ -58,6 +58,85 @@ class TestPyFatFS16(FSTestCases, TestCase, PyFsCompatLayer):
         """Create filesystem for PyFilesystem2 integration tests."""
         return _make_fs(self.FAT_TYPE)[0]
 
+    def test_write_lock(self):
+        """Verify concurrent writes to files are processed sequentially."""
+        from threading import Thread
+        threads = []
+        self.fs.create("/WRITE.TXT")
+
+        def write_to_file(_f, _i):
+            _f.write(str(_i) * 10 + "\n")
+
+        f = self.fs.open("/WRITE.TXT", "w")
+        for i in range(0, 10):
+            t = Thread(target=write_to_file, args=(f, i))
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+        f.close()
+
+        read_text = self.fs.readtext("/WRITE.TXT")
+        for i in range(0, 10):
+            self.assertIn(str(i) * 10 + "\n", read_text)
+
+    def test_append_lock(self):
+        """Verify concurrent appends to files are processed sequentially."""
+        from threading import Thread
+        threads = []
+        self.fs.create("/APPEND.TXT")
+
+        def append_to_file(_fs, _i):
+            _fs.appendtext("/APPEND.TXT", str(_i) * 10 + "\n")
+
+        for i in range(0, 10):
+            t = Thread(target=append_to_file, args=(self.fs, i))
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+
+        read_text = self.fs.readtext("/APPEND.TXT")
+        for i in range(0, 10):
+            self.assertIn(str(i) * 10 + "\n", read_text)
+
+    def test_fs_lock(self):
+        """Check for race conditions on concurrent filesystem operations."""
+        fs, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=True)
+        threads = []
+
+        def create_dentries(fs, i):
+            for n in range(0, 50):
+                fs.makedirs(f"/root/{n}DIR", recreate=True)
+                fs.touch(f"/root/{n}.dat")
+                fs.touch(f"/root/{n}DIR/{n}.dat")
+            fs.touch(f"/root/{i}.txt")
+
+        from threading import Thread
+        for i in range(0, 10):
+            t = Thread(target=create_dentries, args=(fs, i))
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+        in_memory_fs.seek(0)
+        fs = PyFatBytesIOFS(BytesIO(in_memory_fs.read()),
+                            encoding='UTF-8', lazy_load=True)
+        expected_dentries_root = []
+        expected_dentries_sub = []
+        for i in range(0, 50):
+            expected_dentries_root.append(f"{i}DIR")
+            expected_dentries_root.append(f"{i}.dat")
+            expected_dentries_sub.append(f"{i}DIR/{i}.dat")
+        for i in range(0, 10):
+            expected_dentries_root.append(f"{i}.txt")
+        assert fs.listdir("/root").sort() == expected_dentries_root.sort()
+        for i in range(0, 10):
+            assert fs.listdir(f"/root/{i}DIR").sort() == expected_dentries_sub.sort()
+
     def test_lazy_load_dentry_parent_update(self):
         """#33: Verify parent dentry is properly set on lazy-load."""
         fs, in_memory_fs = _make_fs(self.FAT_TYPE, lazy_load=True)
