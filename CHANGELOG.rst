@@ -18,10 +18,12 @@ Fixed
 ~~~~~
 
 * `#34 <https://github.com/nathanhi/pyfatfs/issues/34>`_ (DosDateTime) `PR #35 <https://github.com/nathanhi/pyfatfs/pull/35>`_: Gracefully handle invalid file timestamps by `@beckerben <https://github.com/beckerben>`_
+* `#31 <https://github.com/nathanhi/pyfatfs/issues/31>`_ (FATDirectoryEntry): Handle file sizes larger than 4GB gracefully by responding with ``PyFATException`` and ``errno=E2BIG``
 
 Changed
 ~~~~~~~
 
+* Deprecated ``FATDirectoryEntry.{g,s}et_size()`` method in favor of ``FATDirectoryEntry.size`` property (will be removed in PyFatFS 2.0)
 * Only warn of broken long filename entries, do not fail when encountering them
 * Convert given PyFilesystem2 opener string arguments to correct type (e.g., string to int)
 * Discard unknown PyFilesystem2 opener arguments, do not pass through to underlying PyFatFS constructor

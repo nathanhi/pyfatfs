@@ -47,6 +47,8 @@ class FATDirectoryEntry:
     FAT_DIRECTORY_LAYOUT = "<11sBBBHHHHHHHL"
     #: Size of a directory entry header in bytes
     FAT_DIRECTORY_HEADER_SIZE = struct.calcsize(FAT_DIRECTORY_LAYOUT)
+    #: Maximum allowed file size, dictated by size of DIR_FileSize
+    MAX_FILE_SIZE = 0xFFFFFFFF
     #: Directory entry headers
     FAT_DIRECTORY_VARS = ["DIR_Name", "DIR_Attr", "DIR_NTRes",
                           "DIR_CrtTimeTenth", "DIR_CrtTime",
@@ -81,6 +83,8 @@ class FATDirectoryEntry:
         :param encoding: Encoding of filename
         :param lfn_entry: FATLongDirectoryEntry instance or None
         """
+        self.__filesize = 0
+
         self.name: EightDotThree = DIR_Name
         self.attr = int(DIR_Attr)
         self.ntres = int(DIR_NTRes)
@@ -113,6 +117,28 @@ class FATDirectoryEntry:
     @property
     def _encoding(self):
         return self.__encoding
+
+    @property
+    def filesize(self):
+        """Size of the file in bytes.
+
+        :getter: Get the currently set filesize in bytes
+        :setter: Set new filesize. FAT chain must be extended
+                 separately. Raises `PyFATException` with
+                 `errno=E2BIG` if filesize is larger than
+                 `FATDirectoryEntry.MAX_FILE_SIZE`.
+        :type: int
+        """
+        return self.__filesize
+
+    @filesize.setter
+    def filesize(self, size: int):
+        if size > self.MAX_FILE_SIZE:
+            raise PyFATException(f"Specified file size {size} too large "
+                                 f"for FAT-based filesystems.",
+                                 errno=errno.E2BIG)
+
+        self.__filesize = size
 
     @staticmethod
     def new(name: EightDotThree, tz: timezone, encoding: str,
@@ -212,6 +238,11 @@ class FATDirectoryEntry:
 
         :returns: Filesize or directory entry size in bytes as int
         """
+        import warnings
+        warnings.warn(f"{self.__class__}.get_size is deprecated, "
+                      f"this method will be removed in PyFatFS 2.0; "
+                      f"please use the filesize property instead!",
+                      DeprecationWarning)
         return self.filesize
 
     def set_size(self, size: int):
@@ -219,6 +250,11 @@ class FATDirectoryEntry:
 
         :param size: `int`: File size in bytes
         """
+        import warnings
+        warnings.warn(f"{self.__class__}.set_size is deprecated, "
+                      f"this method will be removed in PyFatFS 2.0; "
+                      f"please set the filesize property directly!",
+                      DeprecationWarning)
         self.filesize = size
 
     def get_cluster(self):

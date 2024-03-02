@@ -7,6 +7,7 @@ import threading
 from typing import Union, Optional
 
 from fs.mode import Mode
+from pyfatfs import PyFATException
 
 from pyfatfs.PyFat import PyFat
 
@@ -120,7 +121,7 @@ class FatIO(io.RawIOBase):
         super().close()
 
     def readable(self) -> bool:
-        """Determine whether or not the file is readable."""
+        """Determine whether the file is readable."""
         return self.mode.reading
 
     def read(self, size: int = -1) -> Union[bytes, None]:
@@ -168,7 +169,7 @@ class FatIO(io.RawIOBase):
         return bytes_read
 
     def writable(self) -> bool:
-        """Determine whether or not the file is writable."""
+        """Determine whether the file is writable."""
         if not self.dir_entry.is_read_only() and not self.fs.is_read_only:
             return self.mode.writing
         return False
@@ -183,6 +184,11 @@ class FatIO(io.RawIOBase):
         if sz == 0:
             # Nothing to do
             return sz
+        if self.__bpos + sz > self.dir_entry.MAX_FILE_SIZE:
+            raise PyFATException(f"Unable to write {sz} bytes to file as "
+                                 f"total file size would exceed FAT "
+                                 f"limitations.",
+                                 errno=errno.E2BIG)
         elif cluster == 0:
             # Allocate new cluster chain if needed
             self.__cpos = self.fs.allocate_bytes(sz)[0]
@@ -208,6 +214,11 @@ class FatIO(io.RawIOBase):
         """
         cur_pos = self.tell()
         size = size if size is not None else cur_pos
+        if size > self.dir_entry.MAX_FILE_SIZE:
+            raise PyFATException(f"Unable to truncate file to {size} bytes "
+                                 f"as it would exceed FAT file size "
+                                 f"limitations.",
+                                 errno=errno.E2BIG)
 
         if size > self.dir_entry.get_size():
             self.seek(0, 2)
@@ -226,6 +237,6 @@ class FatIO(io.RawIOBase):
                 break
 
         # Update file size
-        self.dir_entry.set_size(size)
+        self.dir_entry.filesize = size
         self.fs.update_directory_entry(self.dir_entry.get_parent_dir())
         return size

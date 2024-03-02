@@ -203,7 +203,7 @@ class PyFatFS(FS):
                 dentry.wrttime = dt.serialize_time()
                 dentry.wrtdate = dt.serialize_date()
                 dentry.lstaccessdate = dt.serialize_date()
-                dentry.set_size(0)
+                dentry.filesize = 0
                 old_cluster = dentry.get_cluster()
                 dentry.set_cluster(0)
                 self.fs.free_cluster_chain(old_cluster)

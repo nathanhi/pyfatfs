@@ -3,7 +3,10 @@
 """Tests the FATDirectoryEntry module."""
 
 import datetime
+import errno
 
+import pytest
+from pyfatfs import PyFATException
 from pyfatfs.EightDotThree import EightDotThree
 from pyfatfs.FATDirectoryEntry import FATDirectoryEntry
 
@@ -99,3 +102,37 @@ def test_walk():
         for i, f in enumerate(files[0]):
             assert bytes(_files[i].name) == f
         files.pop(0)
+
+
+def test_filesize_2big_new():
+    """Verify that file size is boundary checked in constructor."""
+    tz = datetime.timezone.utc
+    dentry_name = EightDotThree()
+    dentry_name.set_str_name("FOO")
+    dentry = FATDirectoryEntry.new(name=dentry_name, tz=tz, encoding='ASCII',
+                                   filesize=0xefbeadde)
+    assert dentry.filesize == 0xefbeadde
+    assert bytes(dentry)[-4:] == b'\xde\xad\xbe\xef'
+
+    with pytest.raises(PyFATException) as e:
+        FATDirectoryEntry.new(name=dentry_name, tz=tz, encoding='ASCII',
+                              filesize=FATDirectoryEntry.MAX_FILE_SIZE+1)
+    assert e.value.errno == errno.E2BIG
+
+
+def test_filesize_2big_set():
+    """Verify that file size is boundary checked in constructor."""
+    tz = datetime.timezone.utc
+    dentry_name = EightDotThree()
+    dentry_name.set_str_name("FOO")
+    dentry = FATDirectoryEntry.new(name=dentry_name, tz=tz,
+                                   encoding='ASCII', filesize=1)
+    with pytest.raises(PyFATException) as e:
+        dentry.filesize = FATDirectoryEntry.MAX_FILE_SIZE+1
+    assert e.value.errno == errno.E2BIG
+    assert dentry.filesize == 1
+    assert bytes(dentry)[-4:] == b'\x01\x00\x00\x00'
+
+    dentry.filesize = FATDirectoryEntry.MAX_FILE_SIZE
+    assert dentry.filesize == FATDirectoryEntry.MAX_FILE_SIZE
+    assert bytes(dentry)[-4:] == b'\xff\xff\xff\xff'
