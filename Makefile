@@ -58,7 +58,7 @@ build: venv
 .PHONY: twine_upload
 twine_upload: clean build
 	python3 -m venv $(VENV_DIR)/twine_venv
-	$(VENV_DIR)/twine_venv/$(VENV_BIN_DIR)/python3 -m pip install twine==4.0.2
+	$(VENV_DIR)/twine_venv/$(VENV_BIN_DIR)/python3 -m pip install twine==5.0.0
 	$(VENV_DIR)/twine_venv/$(VENV_BIN_DIR)/twine upload dist/*
 
 .PHONY: coveralls_parallel
