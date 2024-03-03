@@ -47,7 +47,7 @@ development = [
     "flake8~=7.0",
     "flake8-docstrings~=1.6",
     "pip-tools~=7.3",
-    "sphinx~=4.0.3",
+    "sphinx~=7.1.2",
     "build~=0.9",
 ]
 
