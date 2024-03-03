@@ -75,7 +75,7 @@ class FatIO(io.RawIOBase):
         if whence == 1:
             offset += self.__bpos
         elif whence == 2:
-            offset += self.dir_entry.get_size()
+            offset += self.dir_entry.filesize
         elif whence != 0:
             raise ValueError(f"Invalid whence {whence}, should be 0, 1 or 2")
 
@@ -226,11 +226,11 @@ class FatIO(io.RawIOBase):
                                      f"size limitations.",
                                      errno=errno.E2BIG)
 
-            if size > self.dir_entry.get_size():
+            if size > self.dir_entry.filesize:
                 self.seek(0, 2)
-                self.__write(b'\0' * (size - self.dir_entry.get_size()))
+                self.__write(b'\0' * (size - self.dir_entry.filesize))
                 self.seek(cur_pos)
-            elif size < self.dir_entry.get_size():
+            elif size < self.dir_entry.filesize:
                 # Always keep at least one cluster allocated
                 num_clusters = max(1, self.fs.calc_num_clusters(size))
                 i = 0
